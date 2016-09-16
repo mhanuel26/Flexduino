@@ -1,0 +1,381 @@
+/**
+ * INTERCOM PROJECT - KINETICS NXP DESIGN CONTEST CODE
+ * Author: Manuel Iglesias
+ **/
+
+#include "board.h"
+#include "pin_mux.h"
+#include "clock_config.h"
+#include "util.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+#include "fsl_device_registers.h"
+#include "fsl_debug_console.h"
+#include <SipServer.h>
+#include <WiFi101.h>
+extern "C" {
+#include "bsp/include/nm_bsp_mk82fn256.h"
+//#include "intercomsip.h"
+}
+#include <assert.h>
+#include <stdbool.h>
+// WINC1500 MAC 	F8:F0:05:F0:B8:C0
+// FatFs support includes
+#include "sdCardSPI.h"
+#include "FatFs/ff.h"
+#include "FatFs.h"
+#include "Serial.h"
+//#include "TinyWebServer.h"
+#include "Flash.h"
+#include "webApp.h"
+
+// exoSip includes
+//#include <eXosip2/eXosip.h>
+#include <stdarg.h>			// for the log wrapper
+//#include "in.h"
+
+//void TraceSipError2DbgCsl(char* fi, int li, osip_trace_level_t level, char *chfr, va_list ap);
+
+
+// test jrtplib
+#include "rtpsession.h"
+#include "rtpudpv4transmitter.h"
+#include "rtpipv4address.h"
+#include "rtpsessionparams.h"
+#include "rtperrors.h"
+#include <string>
+
+using namespace jrtplib;
+
+SerialConsole Serial;
+
+#define PROG_NAME "sipintercom"
+#define PROG_VER  "0.1"
+#define UA_STRING "SipIntercom v" PROG_VER
+#define SYSLOG_FACILITY LOG_DAEMON
+
+#define LOG_INFO 	0
+
+#define syslog_wrapper(a, b...) M2M_INFO(b); M2M_INFO("\r\n");
+
+static void put_rc (FRESULT rc);
+void printWifiStatus();
+
+char ssid[] = "MOOI";      // your network SSID (name)
+char pass[] = "mooi2409*";   // your network password
+int keyIndex = 0;                 // your network key Index number (needed only for WEP)
+int status = WL_IDLE_STATUS;
+
+// SD card File System Vars
+#define HAVE_SD_CARD	0
+#define SD_SPEED_TEST	0
+#if SD_SPEED_TEST
+#define SD_FILE_SIZE	512*80
+static void testSdCard(FileFs *FileFsObj);		// A function to test SD card only accesable from within this file (proto here)
+BYTE Buff[SD_FILE_SIZE]; /* File read buffer (80 SD card blocks to let multiblock operations (if file not fragmented) */
+#endif
+
+//SipServer  sipServer;
+
+int sipSock;
+FileFs file;
+boolean has_filesystem = true;
+
+//extern TinyWebServer web;
+
+void setup(void){
+	/* Init board hardware. */
+	BOARD_InitPins();
+//	BOARD_BootClockRUN();
+	BOARD_BootClockHSRUN();		// init at full speed
+	BOARD_InitDebugConsole();
+	BOARD_InitTimers();
+	// init  message
+	PRINTF("\r\nInit Intercom - NXP contest!\r\n");
+	// Init SD card
+
+#if HAVE_SD_CARD
+	DWORD fre_sect, tot_sect;
+	if(!file.begin()){
+		has_filesystem = false;
+	}
+	if(has_filesystem){
+		setAppHandlers();
+		// some test to SD card
+		tot_sect = file.capacity();
+		fre_sect = file.free();
+		PRINTF("%lu MB total drive space.\r\n"
+			   "%lu MB available.\r\n",
+			   fre_sect, tot_sect);
+		PRINTF("SD card mount OK\r\n");
+#if SD_SPEED_TEST
+		testSdCard(&file);
+#endif
+	}
+#endif
+	// check for the presence of the shield:
+	if (WiFi.status() == WL_NO_SHIELD) {
+		PRINTF("WiFi shield not present");
+		// don't continue:
+		while (true);
+	}
+
+	// attempt to connect to Wifi network:
+	while ( status != WL_CONNECTED) {
+		PRINTF("Attempting to connect to SSID: ");
+		PRINTF(ssid);
+		PRINTF("\r\n");
+		// Connect to WPA/WPA2 network. Change this line if using open or WEP network:
+		status = WiFi.begin(ssid, pass);
+	}
+	// you're connected now, so print out the status:
+	printWifiStatus();
+//	init our web server
+//	web.begin();
+		// init socket for osip
+//	sipServer = SipServer(5060);
+//	sipServer.begin();
+}
+
+/*!
+ * @brief Application entry point.
+ */
+
+//typedef struct regparam_t {
+//  int regid;
+//  int expiry;
+//  int auth;
+//} regparam_t;
+
+//
+// This function checks if there was a RTP error. If so, it displays an error
+// message and exists.
+//
+
+void checkerror(int rtperr)
+{
+	if (rtperr < 0)
+	{
+		Serial << F("ERROR: ") << F(RTPGetErrorString(rtperr).c_str()) << "\r\n";
+		for(;;){}
+	}
+}
+
+struct eXosip_t *context_eXosip;
+
+int main(void) {
+	// call setup to
+	setup();
+
+	RTPSession sess;
+	uint16_t portbase,destport;
+	uint32_t destip;
+	int status,i,num;
+
+
+	// Now, we'll create a RTP session, set the destination, send some
+	// packets and poll for incoming data.
+
+	RTPUDPv4TransmissionParams transparams;
+	RTPSessionParams sessparams;
+
+	// IMPORTANT: The local timestamp unit MUST be set, otherwise
+	//            RTCP Sender Report info will be calculated wrong
+	// In this case, we'll be sending 10 samples each second, so we'll
+	// put the timestamp unit to (1.0/10.0)
+	sessparams.SetOwnTimestampUnit(1.0/10.0);
+
+	sessparams.SetAcceptOwnPackets(true);
+	transparams.SetPortbase(portbase);
+	status = sess.Create(sessparams,&transparams);
+	checkerror(status);
+
+	RTPIPv4Address addr(destip,destport);
+
+	status = sess.AddDestination(addr);
+	checkerror(status);
+
+//	for (i = 1 ; i <= num ; i++)
+//	{
+//		PRINTF("\nSending packet %d/%d\n",i,num);
+//
+//		// send the packet
+//		status = sess.SendPacket((void *)"1234567890",10,0,false,10);
+//		checkerror(status);
+//
+//		sess.BeginDataAccess();
+//
+//		// check incoming packets
+//		if (sess.GotoFirstSourceWithData())
+//		{
+//			do
+//			{
+//				RTPPacket *pack;
+//
+//				while ((pack = sess.GetNextPacket()) != NULL)
+//				{
+//					// You can examine the data here
+//					PRINTF("Got packet !\r\n");
+//
+//					// we don't longer need the packet, so
+//					// we'll delete it
+//					sess.DeletePacket(pack);
+//				}
+//			} while (sess.GotoNextSourceWithData());
+//		}
+//
+//		sess.EndDataAccess();
+//
+//#ifndef RTP_SUPPORT_THREAD
+//		status = sess.Poll();
+//		checkerror(status);
+//#endif // RTP_SUPPORT_THREAD
+//
+//		RTPTime::Wait(RTPTime(1,0));
+//	}
+//
+//	sess.BYEDestroy(RTPTime(10,0),0,0);
+}
+
+void printWifiStatus() {
+	// print the SSID of the network you're attached to:
+	Serial.print("SSID: ");
+	Serial.println(WiFi.SSID());
+
+	// print your WiFi shield's IP address:
+	IPAddress ip = WiFi.localIP();
+	Serial.print("IP Address: ");
+	Serial.println(ip);
+
+	// print the received signal strength:
+	long rssi = WiFi.RSSI();
+	Serial.print("signal strength (RSSI):");
+	Serial.print(rssi);
+	Serial.println(" dBm");
+}
+
+
+#if SD_SPEED_TEST
+/* Stop with dying message */
+// seriously this is only to be use for debugging
+static void die(FRESULT rc)
+{
+	put_rc(rc);
+	for(;;);
+}
+static void testSdCard(FileFs *FileFsObj){
+    unsigned int i;
+    UINT T;
+    FileFs *FatFs = FileFsObj;
+
+    for( i = 0; i < sizeof(Buff); i++) Buff[i] = i + i / 512; // fill the buffer with some data
+
+    /****************************/
+    if(!FatFs->open("Data.bin", FA_WRITE | FA_CREATE_ALWAYS))
+    	die((FRESULT)FatFs->error());
+    T = millis();
+    if(!FatFs->write(Buff, sizeof(Buff)))
+    	die((FRESULT)FatFs->error());
+    T = millis() - T;
+    float rate = (1000.0*SD_FILE_SIZE*8)/(T*1024);
+    PRINTF("WRITE TOOK %d ms, rate = %.2f kbit/s\r\n", T, rate);
+    if(!FatFs->close())
+    	die((FRESULT)FatFs->error());
+    /****************************/
+    memset(Buff, 0, sizeof(Buff));
+    if(!FatFs->open("Data.bin", FA_READ))
+    	die((FRESULT)FatFs->error());
+    T = millis();
+    if(!FatFs->read(Buff, sizeof(Buff)))
+    	die((FRESULT)FatFs->error());
+    T = millis() - T;
+    rate = (1000.0*SD_FILE_SIZE*8)/(T*1024);
+    PRINTF("READ TOOK %d ms, rate = %.2f kbit/s\r\n", T, rate);
+    if(!FatFs->close())
+    	die((FRESULT)FatFs->error());
+    /****************************/
+    if(!FatFs->openDir(""))
+    	die((FRESULT)FatFs->error());
+    for(;;){
+    	if(!FatFs->nextFile()) break;
+    	if(FatFs->isDirectory()){
+    		PRINTF(" <dir> %s\r\n", FatFs->fileName());
+    	}else{
+    		PRINTF("%8d %s\r\n", FatFs->fileSize(), FatFs->fileName());
+    	}
+    }
+//    /****************************/
+}
+
+
+static
+void put_rc (FRESULT rc)
+{
+	const char *str =
+		"OK\0" "DISK_ERR\0" "INT_ERR\0" "NOT_READY\0" "NO_FILE\0" "NO_PATH\0"
+		"INVALID_NAME\0" "DENIED\0" "EXIST\0" "INVALID_OBJECT\0" "WRITE_PROTECTED\0"
+		"INVALID_DRIVE\0" "NOT_ENABLED\0" "NO_FILE_SYSTEM\0" "MKFS_ABORTED\0" "TIMEOUT\0"
+		"LOCKED\0" "NOT_ENOUGH_CORE\0" "TOO_MANY_OPEN_FILES\0";
+	int i;
+
+	for (i = 0; i != rc && *str; i++) {
+		while (*str++) ;
+	}
+	PRINTF("rc=%u FR_%s\r\n", (UINT)rc, str);
+}
+
+#endif
+
+//void TraceSipError2DbgCsl(char* fi, int li, osip_trace_level_t level, char *chfr, va_list ap)
+//{
+//	switch(level) {
+//	case OSIP_FATAL:
+//		Serial.print("| OSIP_FATAL |");
+//		break;
+//	case OSIP_BUG:
+//		Serial.print("| OSIP_BUG |");
+//		break;
+//	case OSIP_ERROR:
+//		Serial.print("| OSIP_ERROR |");
+//		break;
+//	case OSIP_WARNING:
+//		Serial.print("| OSIP_WARNING |");
+//		break;
+//	case OSIP_INFO1:
+//		Serial.print("| OSIP_INFO1 | ");
+//		break;
+//	case OSIP_INFO2:
+//		Serial.print("| OSIP_INFO2 |");
+//		break;
+//	case OSIP_INFO3:
+//		Serial.print("| OSIP_INFO3 |");
+//		break;
+//	case OSIP_INFO4:
+//		Serial.print("| OSIP_INFO4 |");
+//		break;
+//	default:
+//		break;
+//	}
+//	Serial.print("<");
+//	Serial.print(fi);
+//	Serial.print(":");
+//	Serial.print(li);
+//	Serial.print("> ");
+//
+//	PRINTF_FORMATTED(chfr, ap);
+//	Serial.println();
+//}
+
+
+// TODO: need to port the RANDOM number using NXP TRNG
+//	unsigned int k;
+//	for(;;) {
+//		osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "testing trace\n");
+////		k = osip_build_random_number();
+////		if (k < 1000)
+////			break;
+//	}
+
+
+// EOF
