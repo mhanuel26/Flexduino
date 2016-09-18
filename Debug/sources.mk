@@ -42,6 +42,7 @@ source/cameraLib/ov7670 \
 source/cameraLib \
 source/cameraLib/encoder \
 source/audioLib \
+source/artik_cloud \
 source/Wire/utility \
 source/Wire \
 source/WebSockets/libsha1 \

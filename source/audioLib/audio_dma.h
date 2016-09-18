@@ -47,7 +47,6 @@ void ClearAudioBuffers(void);
 void ClearAudioBuf(int16_t *p);
 
 void Init_FTM2(void);
-void Init_PIT(void);
 void Set_Audio_Playback_Dma(void);
 
 void Set_VREF(void);

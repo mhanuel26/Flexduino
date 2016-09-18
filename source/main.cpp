@@ -67,8 +67,9 @@ extern "C" {
 // websockets support
 #include "WebSockets.h"
 #include "WebSocketsServer.h"
-#include "WebSocketsClient.h"
-#include <ArduinoJson.h>
+
+// ARTIK CLOUD SUPPORT
+#include "artik.h"
 
 // Test SSL client
 #define SSL_CLIENT_TEST	0
@@ -88,11 +89,7 @@ SerialConsole Serial;
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght);
 
-void webSocketArtikEvent(WStype_t type, uint8_t * payload, size_t lenght);
-
 bool ws_send_file(uint8_t num, const char* filename);
-
-int loadBufferParam(String param, int value );
 
 static void put_rc (FRESULT rc);
 void printWifiStatus();
@@ -104,19 +101,13 @@ char pass[] = "mooi2409*";   // your network password
 int keyIndex = 0;                 // your network key Index number (needed only for WEP)
 int status = WL_IDLE_STATUS;
 
-
-// Artik Cloud
-String device_id = String("0cfb45de3d264b78ba3945a38f4ffd8b");
-String device_token = String("d216241fe8414430a418898ec23699e1");
-//String AuthorizationData = "Authorization: Bearer <YOUR DEVICE TOKEN>";
-String AuthorizationData = "Authorization: Bearer " + device_token;
-char buf[200];
-
-
 #define FIRMWARE_UPDATER	0
-#define USE_WEBSOCK_CLIENT	0
 #define USE_WEBSOCK_SERVER	0
+#if (ARTIK_CONN_PROTOCOL == ARTIK_USE_REST_CLIENT)
+#define ARTIK_REST_CLIENT	1
+#else
 #define ARTIK_REST_CLIENT	0
+#endif
 
 #define SERVER_ENABLE	0
 #if defined(OV7670)
@@ -165,12 +156,14 @@ boolean has_filesystem = true;
 SipServer  sipServer;
 #endif
 
-
 extern TinyWebServer web;
 extern WebSocketsServer webSocket;
-WebSocketsClient webSockClient;
 extern AudioFlexClass AudioFlex;
+extern artikLand Flexartik;
 
+#if (ARTIK_CONN_PROTOCOL == ARTIK_USE_WEBSOCK_CLIENT)
+WebSocketsClient webSockClient;
+#endif
 
 void init_bsp(void){
 	/* Init board hardware. */
@@ -242,15 +235,9 @@ void setup(void){
 	web.begin();
 #endif
 
-#if USE_WEBSOCK_CLIENT			// Let's connect to Artik Cloud using Websockets
+#if (ARTIK_CONN_PROTOCOL == ARTIK_USE_WEBSOCK_CLIENT)			// Let's connect to Artik Cloud using Websockets
 	// init webSockets client
-//	webSockClient.beginSSL("wss://api.artik.cloud/v1.1/websocket", 443);
-//	webSockClient.beginSSL("52.86.204.150", 443, "/v1.1/websocket?ack=true");
-//	webSockClient.beginSSL("api.artik.cloud", 443, "/v1.1/websocket?ack=true");		 //, "v1.1/websocket");
-//	webSockClient.beginSSL("api.samsungsami.io", 443, "/v1.1/websocket?ack=true");
-//	webSockClient.beginSSL("echo.websocket.org", 443);
-	webSockClient.begin("192.168.1.112", 8020);
-//	webSockClient.begin("echo.websocket.org", 80);
+	webSockClient.beginSSL("api.artik.cloud", 443, "/v1.1/websocket?ack=true", "");
 	webSockClient.onEvent(webSocketArtikEvent);
 #endif
 #if USE_WEBSOCK_SERVER
@@ -327,6 +314,15 @@ int main(void) {
 	uint32_t start = millis();
 #endif
 #endif	// Firmware updater
+
+#if ARTIK_REST_CLIENT
+	bool status = false;
+	client.connect(server, port);
+	delay(1000);
+#endif
+
+	int start = millis();
+	bool status = false;
 	for(;;){
 #if FIRMWARE_UPDATER
 //	updater_loop();
@@ -406,48 +402,58 @@ int main(void) {
 		while (true);
 	}
 #endif
-#if USE_WEBSOCK_CLIENT
+#if (ARTIK_CONN_PROTOCOL == ARTIK_USE_WEBSOCK_CLIENT)
 	// webSockets client loop
 	webSockClient.loop();
+	if(millis() - start >= ARTIK_REFRESH_PERIOD){
+		start = millis();
+		Serial.println("Send status to Artik Cloud");
+		Flexartik.send_status(status);
+		status ^= true;
+	}
 #endif
 #if ARTIK_REST_CLIENT
-	bool status = false;
-//    client.connect(server, port);
-//    delay(1000);
-//    if (!client.connected()) {
-//      Serial.println(" error ");
-//    } else {
-//        Serial.println("Sending data");
-//        client.println("POST /v1.1/messages HTTP/1.1");
-//        client.println("Host: api.artik.cloud");
-//        client.println("Accept: */*");
-//        client.println("Content-Type: application/json");
-//        client.println("Connection: close");
-//        client.println(AuthorizationData);
-//
-//         // Automated POST data section
-//         client.print("Content-Length: ");
-//         client.println(loadBufferParam(String("Status"), status));
-////         client.println(loadBuffer(t,h)); // loads buf, returns length
-//         client.println();
-//         client.println(buf);
-//         Serial.println("Data posted");
-//         Serial.println(buf);
-//         client.stop();
-//    }
-	Serial.println("Data posted");
-	Serial.println(status);
-    for(int j=0; j<10; j++){			// workaround since delay_ms is using 16 bit timer, need to concatanate two timers on FlexIO
-    	delay(1*60*1000); // delay 1 min
-    	Serial.println("a minute");
-    }
-    status ^= 1;
+    if (!client.connected()) {
+      Serial.println(" error ");
+    } else {
+        Serial.println("Sending data");
+        client.println("POST /v1.1/messages HTTP/1.1");
+        client.println("Host: api.artik.cloud");
+        client.println("Accept: */*");
+        client.println("Content-Type: application/json");
+        client.println("Connection: close");
+        client.println(AuthorizationData);
+		// Automated POST data section
+		client.print("Content-Length: ");
+		// add the length
+		client.println(loadBufferParam(String("status"), &status, Boolean));
+		client.println();
+		client.println(buf);
 
+		delay(500);
+		while (client.available()) {
+			char c = client.read();
+			Serial.write(c);
+		}
+//		Serial.println("POST /v1.1/messages HTTP/1.1");
+//		Serial.println("Host: api.artik.cloud");
+//		Serial.println("Accept: */*");
+//		Serial.println("Content-Type: application/json");
+//		Serial.println("Connection: close");
+//		Serial.println(AuthorizationData);
+//		// Automated POST data section
+//		Serial.print("Content-Length: ");
+//		// add the length
+//		Serial.println(loadBufferParam(String("status"), &status, Boolean));
+//		Serial.println();
+//		Serial.println(buf);
+    }
+	delay(10*60*1000); // delay 10 min
+    status ^= true;
 #endif
 #endif	// Firmware Updater
 	};				// end of endless loop
 }
-
 
 void printWifiStatus() {
 	// print the SSID of the network you're attached to:
@@ -556,40 +562,6 @@ bool ws_send_file(uint8_t num, const char* filename) {
 	return false;
 }
 
-int loadBufferParam(String param, int value ) {
-	using namespace ArduinoJson;
-	StaticJsonBuffer<200> jsonBuffer; // reserve spot in memory
-
-	JsonObject& root = jsonBuffer.createObject(); // create root objects
-	 root["sdid"] = device_id.c_str() ; // FIX
-	 root["type"] = "message";
-
-	JsonObject& dataPair = root.createNestedObject("data"); // create nested objects
-	 dataPair[param.c_str()] = value;
-
-	root.printTo(buf, sizeof(buf)); // JSON-print to buffer
-
-	return (root.measureLength()); // also return length
- }
-
-
-int loadBuffer(int insTemp, int insHumid ) {
-	using namespace ArduinoJson;
-	StaticJsonBuffer<200> jsonBuffer; // reserve spot in memory
-
-	JsonObject& root = jsonBuffer.createObject(); // create root objects
-	 root["sdid"] = device_id.c_str() ; // FIX
-	 root["type"] = "message";
-
-	JsonObject& dataPair = root.createNestedObject("data"); // create nested objects
-	 dataPair["temp"] = insTemp;
-	 dataPair["humid"] = insHumid;
-
-	root.printTo(buf, sizeof(buf)); // JSON-print to buffer
-
-	return (root.measureLength()); // also return length
- }
-
 
 #if USE_WEBSOCK_SERVER
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
@@ -657,42 +629,5 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
 }
 #endif
 
-#if USE_WEBSOCK_CLIENT
-void webSocketArtikEvent(WStype_t type, uint8_t * payload, size_t length) {
-    switch(type) {
-        case WStype_DISCONNECTED:
-            Serial.println("[WSc] Disconnected!\n");
-            break;
-        case WStype_CONNECTED:
-            {
-//            	{"type":"register", "sdid":"0cfb45de3d264b78ba3945a38f4ffd8b", "Authorization": "bearer d216241fe8414430a418898ec23699e1", "cid": "1234567890"}
-                Serial.print("[WSSc] Connected to url: ");
-                Serial.println((char *)payload);
-                // Websocket connection is open
-                String registerMessage = String();
-                registerMessage += String("{\"type\":\"register\", \"sdid\": \"");
-                registerMessage += device_id;
-                registerMessage += String("\", \"Authorization\":\"bearer ");
-                registerMessage += device_token;
-                registerMessage += String("\", \"cid\": \"1234567890\"}");
-                Serial.println("Register Message to send:");
-                Serial.println(registerMessage);
-//                '{"type":"register", "sdid":"'+device_id+'", "Authorization":"bearer '+device_token+'", "cid":"'+getTimeMillis()+'"}';
-                webSockClient.sendTXT(registerMessage.c_str(), strlen(registerMessage.c_str()));
-            }
-            break;
-        case WStype_TEXT:
-            Serial.print("[WSc] get text: ");
-            Serial.println((char *)payload);
-            break;
-        case WStype_BIN:
-            Serial.print("[WSc] get binary length: ");
-            Serial.println(length);
-            break;
-        default:
-			break;
-    }
-}
-#endif
 
 // EOF

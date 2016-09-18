@@ -22,6 +22,7 @@ RM := rm -rf
 -include source/cameraLib/encoder/subdir.mk
 -include source/cameraLib/subdir.mk
 -include source/audioLib/subdir.mk
+-include source/artik_cloud/subdir.mk
 -include source/Wire/utility/subdir.mk
 -include source/Wire/subdir.mk
 -include source/WebSockets/libsha1/subdir.mk

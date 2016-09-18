@@ -25,6 +25,7 @@
 #include "WebSockets.h"
 #include "WebSocketsClient.h"
 
+
 WebSocketsClient::WebSocketsClient() {
     _cbEvent = NULL;
     _client.num = 0;
@@ -34,10 +35,11 @@ WebSocketsClient::~WebSocketsClient() {
     disconnect();
 }
 
+
 /**
  * calles to init the Websockets server
  */
-void WebSocketsClient::begin(const char *host, uint16_t port, const char * url) {
+void WebSocketsClient::begin(const char *host, uint16_t port, const char * url, const char * protocol) {
     _host = host;
     _port = port;
 #if (WEBSOCKETS_NETWORK_TYPE == NETWORK_ESP8266)
@@ -59,9 +61,11 @@ void WebSocketsClient::begin(const char *host, uint16_t port, const char * url) 
     _client.cIsWebsocket = true;
     _client.cKey = "";
     _client.cAccept = "";
-    _client.cProtocol = "";
+    _client.cProtocol = protocol;
     _client.cExtensions = "";
     _client.cVersion = 0;
+    _client.base64Authorization = "";
+    _client.plainAuthorization = "";
 
 #ifdef ESP8266
     randomSeed(RANDOM_REG32);
@@ -69,11 +73,18 @@ void WebSocketsClient::begin(const char *host, uint16_t port, const char * url) 
     // todo find better seed
     randomSeed(millis());
 #endif
+#if (WEBSOCKETS_NETWORK_TYPE == NETWORK_ESP8266_ASYNC)
+    asyncConnect();
+#endif
 }
 
-void WebSocketsClient::begin(String host, uint16_t port, String url) {
-    begin(host.c_str(), port, url.c_str());
+void WebSocketsClient::begin(String host, uint16_t port, String url, String protocol) {
+    begin(host.c_str(), port, url.c_str(), protocol.c_str());
 }
+
+//void WebSocketsClient::begin(String host, uint16_t port, String url) {
+//    begin(host.c_str(), port, url.c_str());
+//}
 
 #if (WEBSOCKETS_NETWORK_TYPE == NETWORK_ESP8266)
 void WebSocketsClient::beginSSL(const char *host, uint16_t port, const char * url, const char * fingerprint) {
@@ -86,15 +97,24 @@ void WebSocketsClient::beginSSL(String host, uint16_t port, String url, String f
     beginSSL(host.c_str(), port, url.c_str(), fingerprint.c_str());
 }
 #elif (WEBSOCKETS_NETWORK_TYPE == NETWORK_WINC1500)
-void WebSocketsClient::beginSSL(const char *host, uint16_t port, const char * url) {
-    begin(host, port, url);
+void WebSocketsClient::beginSSL(const char *host, uint16_t port, const char * url, const char * protocol) {
+    begin(host, port, url, protocol);
     _client.isSSL = true;
 }
-
-void WebSocketsClient::beginSSL(String host, uint16_t port, String url) {
-    beginSSL(host.c_str(), port, url.c_str());
+void WebSocketsClient::beginSSL(String host, uint16_t port, String url, String protocol) {
+    beginSSL(host.c_str(), port, url.c_str(), protocol.c_str());
 }
 #endif
+
+void WebSocketsClient::beginSocketIO(const char *host, uint16_t port, const char * url, const char * protocol) {
+    begin(host, port, url, protocol);
+    _client.isSocketIO = true;
+}
+
+void WebSocketsClient::beginSocketIO(String host, uint16_t port, String url, String protocol) {
+    beginSocketIO(host.c_str(), port, url.c_str(), protocol.c_str());
+}
+
 
 /**
  * called in arduino loop
@@ -256,6 +276,31 @@ void WebSocketsClient::disconnect(void) {
     }
 }
 
+/**
+ * set the Authorizatio for the http request
+ * @param user const char *
+ * @param password const char *
+ */
+void WebSocketsClient::setAuthorization(const char * user, const char * password) {
+    if(user && password) {
+        String auth = user;
+        auth += ":";
+        auth += password;
+        _client.base64Authorization = base64_encode((uint8_t *)auth.c_str(), auth.length());
+    }
+}
+
+/**
+ * set the Authorizatio for the http request
+ * @param auth const char * base64
+ */
+void WebSocketsClient::setAuthorization(const char * auth) {
+    if(auth) {
+        //_client.base64Authorization = auth;
+        _client.plainAuthorization = auth;
+    }
+}
+
 //#################################################################################
 //#################################################################################
 //#################################################################################
@@ -376,7 +421,7 @@ void WebSocketsClient::handleClientData(void) {
  */
 void WebSocketsClient::sendHeader(WSclient_t * client) {
 
-    DEBUG_WEBSOCKETS("[WS-Client][sendHeader] sending header...\r\n");
+    DEBUG_WEBSOCKETS("[WS-Client][sendHeader] sending header...\n");
 
     uint8_t randomKey[16] = { 0 };
 
@@ -384,23 +429,56 @@ void WebSocketsClient::sendHeader(WSclient_t * client) {
         randomKey[i] = random(0xFF);
     }
 
+
     client->cKey = base64_encode(&randomKey[0], 16);
 
-//#ifndef NODEBUG_WEBSOCKETS
-//    unsigned long start = micros();
-//#endif
+#ifndef NODEBUG_WEBSOCKETS
+    unsigned long start = micros();
+#endif
 
-    String handshake =  "GET " + client->cUrl + " HTTP/1.1\r\n"
-                        "Host: " + _host + "\r\n"
-                        "Upgrade: websocket\r\n"
-                        "Connection: Upgrade\r\n"
-                        "User-Agent: arduino-WebSocket-Client\r\n"
-                        "Sec-WebSocket-Version: 13\r\n"
-                        "Sec-WebSocket-Protocol: arduino\r\n"
-                        "Sec-WebSocket-Key: " + client->cKey + "\r\n";
+    String transport;
+    String handshake;
+    if(!client->isSocketIO || (client->isSocketIO && client->cSessionId.length() > 0)) {
+        if(client->isSocketIO) {
+            transport = "&transport=websocket&sid=" + client->cSessionId;
+        }
+        //                    "Host: " + _host + ":" + _port + "\r\n"
+//        wss://" +  _host +
+        handshake = "GET " +  client->cUrl + transport + " HTTP/1.1\r\n"
+        			"Host: " + _host + "\r\n"
+					"Connection: Upgrade\r\n"
+					"Pragma: no-cache\r\n"
+					"Cache-Control: no-cache\r\n"
+					"Upgrade: websocket\r\n"
+					"Origin: Flexduino\r\n"
+//					"Cookie: artik_cookiesOVerlay=true\r\n"
+                    "User-Agent: arduino-WebSocket-Client\r\n"
+                    "Sec-WebSocket-Version: 13\r\n"
+                    "Sec-WebSocket-Key: " + client->cKey + "\r\n";
 
-    if(client->cExtensions.length() > 0) {
-        handshake += "Sec-WebSocket-Extensions: " + client->cExtensions + "\r\n";
+        if(client->cProtocol.length() > 0) {
+           handshake += "Sec-WebSocket-Protocol: " + client->cProtocol + "\r\n";
+        }
+
+        if(client->cExtensions.length() > 0) {
+            handshake += "Sec-WebSocket-Extensions: " + client->cExtensions + "\r\n";
+        }
+
+    } else {
+        handshake = "GET " + client->cUrl + "&transport=polling HTTP/1.1\r\n"
+                    "Connection: keep-alive\r\n";
+    }
+
+//    handshake +=    "Host: " + _host + ":" + _port + "\r\n"
+//                    "Origin: file://\r\n"
+//                    "User-Agent: arduino-WebSocket-Client\r\n";
+
+    if(client->base64Authorization.length() > 0) {
+        handshake += "Authorization: Basic " + client->base64Authorization + "\r\n";
+    }
+
+    if(client->plainAuthorization.length() > 0) {
+        handshake += "Authorization: " + client->plainAuthorization + "\r\n";
     }
 
     handshake += "\r\n";
@@ -411,6 +489,8 @@ void WebSocketsClient::sendHeader(WSclient_t * client) {
     DEBUG_WEBSOCKETS("[WS-Client][sendHeader] sending header... Done (%uus).\r\n", (micros() - start));
 #else
     DEBUG_WEBSOCKETS("[WS-Client][sendHeader] sending header... Done \r\n");
+    DEBUG_WEBSOCKETS(handshake.c_str());
+    DEBUG_WEBSOCKETS("\r\n**********************************\r\n");
 #endif
 }
 
@@ -450,6 +530,8 @@ void WebSocketsClient::handleHeader(WSclient_t * client) {
                 client->cExtensions = headerValue;
             } else if(headerName.equalsIgnoreCase("Sec-WebSocket-Version")) {
                 client->cVersion = headerValue.toInt();
+            } else if(headerName.equalsIgnoreCase("Set-Cookie")) {
+                client->cSessionId = headerValue.substring(headerValue.indexOf('=') + 1);
             }
         } else {
             DEBUG_WEBSOCKETS("[WS-Client][handleHeader] Header error (%s)\r\n", headerLine.c_str());
@@ -470,6 +552,7 @@ void WebSocketsClient::handleHeader(WSclient_t * client) {
         DEBUG_WEBSOCKETS("[WS-Client][handleHeader]  - cProtocol: %s\r\n", client->cProtocol.c_str());
         DEBUG_WEBSOCKETS("[WS-Client][handleHeader]  - cExtensions: %s\r\n", client->cExtensions.c_str());
         DEBUG_WEBSOCKETS("[WS-Client][handleHeader]  - cVersion: %d\r\n", client->cVersion);
+        DEBUG_WEBSOCKETS("[WS-Client][handleHeader]  - cSessionId: %s\n", client->cSessionId.c_str());
 
         bool ok = (client->cIsUpgrade && client->cIsWebsocket);
 
@@ -478,6 +561,10 @@ void WebSocketsClient::handleHeader(WSclient_t * client) {
                 case 101:  ///< Switching Protocols
 
                     break;
+                case 200:
+                    if(client->isSocketIO) {
+                        break;
+                    }
                 case 403: ///< Forbidden
                     // todo handle login
                 default:   ///< Server dont unterstand requrst
@@ -504,11 +591,11 @@ void WebSocketsClient::handleHeader(WSclient_t * client) {
         if(ok) {
 
             DEBUG_WEBSOCKETS("[WS-Client][handleHeader] Websocket connection init done.\r\n");
-
-            client->status = WSC_CONNECTED;
+            headerDone(client);
 
             runCbEvent(WStype_CONNECTED, (uint8_t *) client->cUrl.c_str(), client->cUrl.length());
-
+        } else if(clientIsConnected(client) && client->isSocketIO && client->cSessionId.length() > 0) {
+            sendHeader(client);
         } else {
             DEBUG_WEBSOCKETS("[WS-Client][handleHeader] no Websocket connection close.\r\n");
             client->tcp->write("This is a webSocket client!");

@@ -67,6 +67,7 @@
 									<listOptionValue builtIn="false" value="/home/mhanuel/Devel/Networking/ArduinoJson/include"/>
 									<listOptionValue builtIn="false" value="../source/winc1500_firmware_updater"/>
 									<listOptionValue builtIn="false" value="../source/Wire"/>
+									<listOptionValue builtIn="false" value="../source/artik_cloud"/>
 									<listOptionValue builtIn="false" value="../dma_manager"/>
 									<listOptionValue builtIn="false" value="../source/audioLib"/>
 									<listOptionValue builtIn="false" value="../source/cameraLib/encoder"/>
@@ -98,6 +99,7 @@
 								</option>
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.compiler.include.paths.2108717467" name="Include paths (-I)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.compiler.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="../source/FatFs"/>
+									<listOptionValue builtIn="false" value="../source/artik_cloud"/>
 									<listOptionValue builtIn="false" value="/home/mhanuel/Devel/Networking/ArduinoJson/include"/>
 									<listOptionValue builtIn="false" value="../source/winc1500_firmware_updater"/>
 									<listOptionValue builtIn="false" value="../source/Wire"/>
@@ -392,10 +394,10 @@
 	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
 	<storageModule moduleId="scannerConfiguration">
 		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		<scannerConfigBuildInfo instanceId="ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.1936454248;ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.1936454248.;ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.949943056;ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.716697512">
+		<scannerConfigBuildInfo instanceId="ilg.gnuarmeclipse.managedbuild.cross.config.elf.release.475355501;ilg.gnuarmeclipse.managedbuild.cross.config.elf.release.475355501.;ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.1129992653;ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.1335791022">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
 		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="ilg.gnuarmeclipse.managedbuild.cross.config.elf.release.475355501;ilg.gnuarmeclipse.managedbuild.cross.config.elf.release.475355501.;ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.1129992653;ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.1335791022">
+		<scannerConfigBuildInfo instanceId="ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.1936454248;ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.1936454248.;ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.949943056;ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.716697512">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
 		</scannerConfigBuildInfo>
 		<scannerConfigBuildInfo instanceId="ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.1936454248;ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.1936454248.;ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.287577273;ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.input.707903153">

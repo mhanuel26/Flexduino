@@ -45,6 +45,12 @@ typedef uint8_t boolean;
 typedef uint8_t byte;
 
 
+// Not exactly arduino...
+inline const char * const BoolToString(bool b)
+{
+  return b ? "true" : "false";
+}
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

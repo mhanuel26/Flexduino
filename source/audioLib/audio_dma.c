@@ -27,7 +27,6 @@
 #include "fsl_dac.h"
 // support ftm
 #include "fsl_ftm.h"
-#include "fsl_pit.h"
 #include "audio_dma.h"
 
 /*******************************************************************************
@@ -127,7 +126,6 @@ void Init_Audio(void)
   Set_VREF();     // VREF for DAC
   Init_DAC();     // DACs ON
   Init_FTM2();
-//  Init_PIT();
 
 #endif
 
@@ -263,45 +261,6 @@ void Set_Audio_Playback_Dma(void)
 //    DMA0->ERQ = DMA_ERQ_ERQ0_MASK ;
 
 
-}
-
-/***************************************************************************//*!
-* @function  Init_PIT
-*
-* @brief     This function configures the PIT timer for trigger DMA at 8000Hz
-*
-* @note
-****************************************************************************/
-
-void Init_PIT(void){
-    /* Set timer period for channel 0 */
-    PIT_SetTimerPeriod(PIT, kPIT_Chnl_2, USEC_TO_COUNT(500U, PIT_SOURCE_CLOCK));
-//    DisableIRQ(PIT_IRQ2_ID);
-//    PIT_DisableInterrupts(PIT, kPIT_Chnl_2, kPIT_TimerInterruptEnable);
-    EnableIRQ(PIT_IRQ2_ID);
-    PIT_EnableInterrupts(PIT, kPIT_Chnl_2, kPIT_TimerInterruptEnable);
-//    PIT_StartTimer(PIT, kPIT_Chnl_2);
-
-}
-
-
-/*	Handles PIT interrupt if enabled
- *
- * 	Starts conversion in ADC0 with single ended channel 8 (PTB0) as input
- *
- * */
-
-void PIT2_IRQHandler(void)
-{
-	// Clear interrupt
-	PIT_ClearStatusFlags(PIT, kPIT_Chnl_2, PIT_TFLG_TIF_MASK);
-	PIT_StopTimer(PIT, kPIT_Chnl_2);
-//	PIT_DisableInterrupts(PIT, kPIT_Chnl_2, kPIT_TimerInterruptEnable);
-//	DisableIRQ(PIT_IRQ2_ID);
-//	uint32_t primask = DisableGlobalIRQ();
-	if(gpfAudioDmaCb)
-		gpfAudioDmaCb();
-//	EnableGlobalIRQ(primask);
 }
 
 /***************************************************************************//*!

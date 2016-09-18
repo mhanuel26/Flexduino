@@ -22,6 +22,7 @@
  *
  */
 
+#include <stdlib.h>
 #include "WebSockets.h"
 
 #ifdef ESP8266
@@ -49,6 +50,23 @@ extern "C" {
 #if defined(WINC1500)
 #include "fsl_trng.h"
 #endif
+
+
+int random(int maxVal);
+int random(int minVal, int maxVal);
+
+// returns a random integar between 0 and maxVal
+int random(int maxVal)
+{
+  return random( 0, maxVal);
+}
+
+// returns a random integar between minVal and maxVal
+int random(int minVal, int maxVal)
+{
+  // int rand(void); included by default from newlib
+  return rand() % (maxVal-minVal+1) + minVal;
+}
 
 static uint8_t TRN_init = 0;
 
@@ -203,22 +221,35 @@ void WebSockets::sendFrame(WSclient_t * client, WSopcode_t opcode, uint8_t * pay
     }
 
     if(length < 126) {
-        *headerPtr |= length;                   headerPtr++;
+        *headerPtr |= length;
+        headerPtr++;
     } else if(length < 0xFFFF) {
-        *headerPtr |= 126;                      headerPtr++;
-        *headerPtr = ((length >> 8) & 0xFF);    headerPtr++;
-        *headerPtr = (length & 0xFF);           headerPtr++;
+        *headerPtr |= 126;
+        headerPtr++;
+        *headerPtr = ((length >> 8) & 0xFF);
+        headerPtr++;
+        *headerPtr = (length & 0xFF);
+        headerPtr++;
     } else {
         // Normally we never get here (to less memory)
-        *headerPtr |= 127;                      headerPtr++;
-        *headerPtr = 0x00;                      headerPtr++;
-        *headerPtr = 0x00;                      headerPtr++;
-        *headerPtr = 0x00;                      headerPtr++;
-        *headerPtr = 0x00;                      headerPtr++;
-        *headerPtr = ((length >> 24) & 0xFF);   headerPtr++;
-        *headerPtr = ((length >> 16) & 0xFF);   headerPtr++;
-        *headerPtr = ((length >> 8) & 0xFF);    headerPtr++;
-        *headerPtr = (length & 0xFF);           headerPtr++;
+        *headerPtr |= 127;
+        headerPtr++;
+        *headerPtr = 0x00;
+        headerPtr++;
+        *headerPtr = 0x00;
+        headerPtr++;
+        *headerPtr = 0x00;
+        headerPtr++;
+        *headerPtr = 0x00;
+        headerPtr++;
+        *headerPtr = ((length >> 24) & 0xFF);
+        headerPtr++;
+        *headerPtr = ((length >> 16) & 0xFF);
+        headerPtr++;
+        *headerPtr = ((length >> 8) & 0xFF);
+        headerPtr++;
+        *headerPtr = (length & 0xFF);
+        headerPtr++;
     }
 
     if(mask) {
@@ -227,7 +258,8 @@ void WebSockets::sendFrame(WSclient_t * client, WSopcode_t opcode, uint8_t * pay
             // by this fact its possible the do the masking
             for(uint8_t x = 0; x < sizeof(maskKey); x++) {
                 maskKey[x] = random(0xFF);
-                *headerPtr = maskKey[x];       headerPtr++;
+                *headerPtr = maskKey[x];
+                headerPtr++;
             }
 
             uint8_t * dataMaskPtr;
@@ -243,10 +275,14 @@ void WebSockets::sendFrame(WSclient_t * client, WSopcode_t opcode, uint8_t * pay
             }
 
         } else {
-            *headerPtr = maskKey[0];          headerPtr++;
-            *headerPtr = maskKey[1];          headerPtr++;
-            *headerPtr = maskKey[2];          headerPtr++;
-            *headerPtr = maskKey[3];          headerPtr++;
+            *headerPtr = maskKey[0];
+            headerPtr++;
+            *headerPtr = maskKey[1];
+            headerPtr++;
+            *headerPtr = maskKey[2];
+            headerPtr++;
+            *headerPtr = maskKey[3];
+            headerPtr++;
         }
     }
 //
@@ -281,6 +317,20 @@ void WebSockets::sendFrame(WSclient_t * client, WSopcode_t opcode, uint8_t * pay
     }
 #endif
 
+}
+
+/**
+ * callen when HTTP header is done
+ * @param client WSclient_t *  ptr to the client struct
+ */
+void WebSockets::headerDone(WSclient_t * client) {
+    client->status = WSC_CONNECTED;
+    client->cWsRXsize = 0;
+    DEBUG_WEBSOCKETS("[WS][%d][headerDone] Header Handling Done (%uus).\n", client->num);
+#if (WEBSOCKETS_NETWORK_TYPE == NETWORK_ESP8266_ASYNC)
+    client->cHttpLine = "";
+    handleWebsocket(client);
+#endif
 }
 
 /**
@@ -337,7 +387,7 @@ void WebSockets::handleWebsocket(WSclient_t * client) {
         }
 
         if(buffer[0] != 0 || buffer[1] != 0 || buffer[2] != 0 || buffer[3] != 0) {
-            // really to big!
+            // really too big!
             payloadLen = 0xFFFFFFFF;
         } else {
             payloadLen = buffer[4] << 24 | buffer[5] << 16 | buffer[6] << 8 | buffer[7];
@@ -348,7 +398,7 @@ void WebSockets::handleWebsocket(WSclient_t * client) {
     DEBUG_WEBSOCKETS("[WS][%d][handleWebsocket] mask: %u payloadLen: %u\r\n", client->num, mask, payloadLen);
 
     if(payloadLen > WEBSOCKETS_MAX_DATA_SIZE) {
-        DEBUG_WEBSOCKETS("[WS][%d][handleWebsocket] payload to big! (%u)\r\n", client->num, payloadLen);
+        DEBUG_WEBSOCKETS("[WS][%d][handleWebsocket] payload too big! (%u)\r\n", client->num, payloadLen);
         clientDisconnect(client, 1009);
         return;
     }

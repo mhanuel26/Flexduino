@@ -32,7 +32,7 @@
 #include "fsl_debug_console.h"
 #include "board.h"
 #define randomSeed
-#define random	getTRN
+//#define random	getTRN
 #define bit(b) (1UL << (b))
 #define delay	_delay_ms
 #endif
@@ -157,6 +157,8 @@ typedef struct {
 
         WEBSOCKETS_NETWORK_CLIENT_CLASS * tcp;
 
+        bool isSocketIO;    ///< client for socket.io server
+
 #if (WEBSOCKETS_NETWORK_TYPE == NETWORK_ESP8266)
         bool isSSL;             ///< run in ssl mode
         WiFiClientSecure * ssl;
@@ -171,6 +173,7 @@ typedef struct {
         bool cIsUpgrade;    ///< Connection == Upgrade
         bool cIsWebsocket;  ///< Upgrade == websocket
 
+        String cSessionId;  ///< client Set-Cookie (session id)
         String cKey;        ///< client Sec-WebSocket-Key
         String cAccept;     ///< client Sec-WebSocket-Accept
         String cProtocol;   ///< client Sec-WebSocket-Protocol
@@ -203,7 +206,7 @@ class WebSockets {
         void clientDisconnect(WSclient_t * client, uint16_t code, char * reason = NULL, size_t reasonLen = 0);
         void sendFrame(WSclient_t * client, WSopcode_t opcode, uint8_t * payload = NULL, size_t length = 0, bool mask = false, bool fin = true, bool headerToPayload = false);
 
-//        void headerDone(WSclient_t * client);
+        void headerDone(WSclient_t * client);
 
         void handleWebsocket(WSclient_t * client);
 
@@ -219,5 +222,15 @@ class WebSockets {
 //        bool readCb(WSclient_t * client, uint8_t *out, size_t n, WSreadWaitCb cb);
 
 };
+
+
+int random(int maxVal);
+int random(int minVal, int maxVal);
+
+// returns a random integar between 0 and maxVal
+int random(int maxVal);
+
+// returns a random integar between minVal and maxVal
+int random(int minVal, int maxVal);
 
 #endif /* WEBSOCKETS_H_ */

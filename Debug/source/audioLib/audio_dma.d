@@ -7,7 +7,7 @@ source/audioLib/audio_dma.o: ../source/audioLib/audio_dma.c \
  ../board/clock_config.h ../drivers/fsl_gpio.h ../drivers/fsl_common.h \
  ../drivers/fsl_edma.h ../drivers/fsl_dmamux.h ../drivers/fsl_port.h \
  ../drivers/fsl_vref.h ../drivers/fsl_dac.h ../drivers/fsl_ftm.h \
- ../drivers/fsl_pit.h ../source/audioLib/audio_dma.h
+ ../source/audioLib/audio_dma.h
 
 ../drivers/fsl_common.h:
 
@@ -52,7 +52,5 @@ source/audioLib/audio_dma.o: ../source/audioLib/audio_dma.c \
 ../drivers/fsl_dac.h:
 
 ../drivers/fsl_ftm.h:
-
-../drivers/fsl_pit.h:
 
 ../source/audioLib/audio_dma.h:

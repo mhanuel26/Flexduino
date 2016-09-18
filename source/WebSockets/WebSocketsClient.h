@@ -36,16 +36,19 @@ class WebSocketsClient: private WebSockets {
         WebSocketsClient(void);
         ~WebSocketsClient(void);
 
-        void begin(const char *host, uint16_t port, const char * url = "/");
-        void begin(String host, uint16_t port, String url = "/");
+        void begin(const char *host, uint16_t port, const char * url = "/", const char * protocol = "arduino");
+        void begin(String host, uint16_t port, String url = "/", String protocol = "arduino");
 
 #if (WEBSOCKETS_NETWORK_TYPE == NETWORK_ESP8266)
         void beginSSL(const char *host, uint16_t port, const char * url = "/", const char * = "");
         void beginSSL(String host, uint16_t port, String url = "/", String fingerprint = "");
 #elif (WEBSOCKETS_NETWORK_TYPE == NETWORK_WINC1500)
-        void beginSSL(const char *host, uint16_t port, const char * url = "/");
-        void beginSSL(String host, uint16_t port, String url = "/");
+        void beginSSL(const char *host, uint16_t port, const char * url = "/", const char * protocol = "arduino");
+        void beginSSL(String host, uint16_t port, String url = "/", String protocol = "arduino");
 #endif
+
+        void beginSocketIO(const char *host, uint16_t port, const char * url = "/socket.io/?EIO=3", const char * protocol = "arduino");
+        void beginSocketIO(String host, uint16_t port, String url = "/socket.io/?EIO=3", String protocol = "arduino");
 
         void loop(void);
 
@@ -61,6 +64,9 @@ class WebSocketsClient: private WebSockets {
         void sendBIN(const uint8_t * payload, size_t length);
 
         void disconnect(void);
+
+        void setAuthorization(const char * user, const char * password);
+        void setAuthorization(const char * auth);
 
     protected:
         String _host;

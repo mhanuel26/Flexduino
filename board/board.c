@@ -45,7 +45,6 @@
 
 volatile bool pitIsrFlag = false;
 volatile unsigned long timer0_millis;
-
 static struct timeval offset = { 0, 0 };
 
 /*******************************************************************************
@@ -94,6 +93,8 @@ void BOARD_InitTimers(void){
     PIT_GetDefaultConfig(&pitConfig);
     /* Init pit module */
     PIT_Init(PIT, &pitConfig);
+
+    // I am using interrupt to keep track of lifetimer but I can also chain two timers...
     /* Set timer period for channel 0 */
     PIT_SetTimerPeriod(PIT, kPIT_Chnl_0, MSEC_TO_COUNT(1U, PIT_SOURCE_CLOCK));
     /* Enable timer interrupts for channel 0 */
@@ -102,8 +103,8 @@ void BOARD_InitTimers(void){
     EnableIRQ(PIT_IRQ_ID);
     /* Start channel 0 */
     PIT_StartTimer(PIT, kPIT_Chnl_0);
-    // TIMER 1 is used for 1 msec delay - delay() replacement
-    /* Disable timer interrupts for channel 1 */
+    // TIMER 2 is used for delay_us
+    /* Disable timer interrupts for channel 2 */
 	PIT_DisableInterrupts(PIT, kPIT_Chnl_1, kPIT_TimerInterruptEnable);
 }
 
@@ -117,20 +118,19 @@ unsigned long _millis(void)
 	return m;
 }
 
-void _delay_ms(int time)
+void _delay_ms(int delay)
 {
-	/* Set timer period for channel 1 */
-	PIT_SetTimerPeriod(PIT, kPIT_Chnl_1, MSEC_TO_COUNT(time, PIT_SOURCE_CLOCK));
-	/* Start channel 1 */
-	PIT_StartTimer(PIT, kPIT_Chnl_1);
-	while(!PIT_GetStatusFlags(PIT, kPIT_Chnl_1));
-	PIT_ClearStatusFlags(PIT, kPIT_Chnl_1, PIT_TFLG_TIF_MASK);
-	PIT_StopTimer(PIT, kPIT_Chnl_1);
+	unsigned long start = _millis();
+	while(1){
+		if(_millis() - start >= delay){
+			break;
+		}
+	}
 }
 
 void _delay_us(int time)
 {
-	/* Set timer period for channel 1 */
+	/* Set timer period for channel 2 */
 	PIT_SetTimerPeriod(PIT, kPIT_Chnl_1, USEC_TO_COUNT(time, PIT_SOURCE_CLOCK));
 	/* Start channel 1 */
 	PIT_StartTimer(PIT, kPIT_Chnl_1);
