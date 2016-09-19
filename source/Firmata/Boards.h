@@ -702,6 +702,28 @@ writePort(port, value, bitmask):  Write an 8 bit port.
 #define PIN_TO_SERVO(p)         (p)
 #define DEFAULT_PWM_RESOLUTION  10
 
+#elif defined(CPU_MK82FN256VDC15)
+
+#define TOTAL_ANALOG_PINS       6						// K82F only has one input available
+#define TOTAL_PINS              20
+#define PIN_SERIAL_RX           3
+#define PIN_SERIAL_TX           1
+#define PIN_SERIAL1_RX          19
+#define PIN_SERIAL1_TX          18
+#define PIN_SERIAL2_RX          17
+#define PIN_SERIAL2_TX          16
+#define PIN_SERIAL3_RX          15
+#define PIN_SERIAL3_TX          14
+#define IS_PIN_DIGITAL(p)       ((p) >= 2 && (p) < TOTAL_PINS)
+#define IS_PIN_ANALOG(p)        ((p) >= 54 && (p) < TOTAL_PINS)
+#define IS_PIN_PWM(p)           digitalPinHasPWM(p)
+#define IS_PIN_SERVO(p)         ((p) >= 2 && (p) - 2 < MAX_SERVOS)
+#define IS_PIN_I2C(p)           ((p) == 20 || (p) == 21) // 70 71
+#define IS_PIN_SERIAL(p)        ((p) > 13 && (p) < 20)
+#define PIN_TO_DIGITAL(p)       (p)
+#define PIN_TO_ANALOG(p)        ((p) - 54)
+#define PIN_TO_PWM(p)           PIN_TO_DIGITAL(p)
+#define PIN_TO_SERVO(p)         ((p) - 2)
 
 // anything else
 #else

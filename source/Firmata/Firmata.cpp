@@ -16,12 +16,18 @@
 //******************************************************************************
 
 #include "Firmata.h"
+#include "Serial.h"
 //#include "HardwareSerial.h"
+#include "IPAddress.h"
 
 extern "C" {
 #include <string.h>
 #include <stdlib.h>
 }
+
+
+extern SerialConsole Serial;
+
 
 //******************************************************************************
 //* Support Functions
@@ -77,7 +83,7 @@ FirmataClass::FirmataClass()
  */
 void FirmataClass::begin(void)
 {
-//  begin(57600);
+  begin(57600);
 }
 
 /**
@@ -87,13 +93,14 @@ void FirmataClass::begin(void)
  * before calling Firmata.begin(baud).
  * @param speed The baud to use. 57600 baud is the default value.
  */
+
 void FirmataClass::begin(long speed)
 {
-//  Serial.begin(speed);
-//  FirmataStream = &Serial;
-//  blinkVersion();
-//  printVersion();         // send the protocol version
-//  printFirmwareVersion(); // send the firmware name and version
+  Serial.begin(speed);
+  FirmataStream = &Serial;
+  blinkVersion();
+  printVersion();         // send the protocol version
+  printFirmwareVersion(); // send the firmware name and version
 }
 
 /**

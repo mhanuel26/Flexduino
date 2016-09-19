@@ -2,6 +2,7 @@
 #define _ARDUINO_H
 
 #include "bsp/include/nm_bsp_mk82fn256.h"
+#include "board.h"
 
 #ifdef __cplusplus
 extern "C"{
@@ -12,6 +13,7 @@ extern "C"{
 #define DEC		10
 #define HEX		16
 
+#define delay	_delay_ms
 #define PI 3.1415926535897932384626433832795
 #define HALF_PI 1.5707963267948966192313216916398
 #define TWO_PI 6.283185307179586476925286766559

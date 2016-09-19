@@ -4,16 +4,28 @@
 #include "WebSocketsClient.h"
 #include "parse_utils.h"
 
+#define ARTIK_DISABLE				0
+#define ARTIK_USE_REST_CLIENT 		1		// basic connectivity done
+#define ARTIK_USE_WEBSOCK_CLIENT 	2		// idem
+#define ARTIK_USE_MQTT_CLIENT 		3		// Not implemented yet
 
-#define ARTIK_USE_REST_CLIENT 		0		// basic connectivity done
-#define ARTIK_USE_WEBSOCK_CLIENT 	1		// idem
-#define ARTIK_USE_MQTT_CLIENT 		2		// Not implemented yet
 
-#define ARTIK_CONN_PROTOCOL		ARTIK_USE_WEBSOCK_CLIENT
+#define ARTIK_CONN_PROTOCOL		ARTIK_DISABLE	//ARTIK_USE_WEBSOCK_CLIENT
 
 #define ARTIK_REFRESH_PERIOD	(10*60*1000)
 
+#if (ARTIK_CONN_PROTOCOL == ARTIK_DISABLE)
+	// We are not building ARTIK
+#else
 void webSocketArtikEvent(WStype_t type, uint8_t * payload, size_t length);
+
+typedef enum {
+	Boolean,
+	Double,
+	Integer,
+	Long,
+	Strng
+}dtype;
 
 
 //typedef struct{
@@ -39,5 +51,6 @@ private:
 };
 
 artikLand Flexartik;
+#endif
 
 #endif

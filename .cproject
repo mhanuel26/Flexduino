@@ -71,6 +71,8 @@
 									<listOptionValue builtIn="false" value="../dma_manager"/>
 									<listOptionValue builtIn="false" value="../source/audioLib"/>
 									<listOptionValue builtIn="false" value="../source/cameraLib/encoder"/>
+									<listOptionValue builtIn="false" value="../source/Firmata"/>
+									<listOptionValue builtIn="false" value="../source/Firmata/utility"/>
 									<listOptionValue builtIn="false" value="../source/FatFs"/>
 									<listOptionValue builtIn="false" value="../source/cameraLib/ov7670"/>
 									<listOptionValue builtIn="false" value="../source/WebSockets"/>
@@ -99,6 +101,8 @@
 								</option>
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.compiler.include.paths.2108717467" name="Include paths (-I)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.compiler.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="../source/FatFs"/>
+									<listOptionValue builtIn="false" value="../source/Firmata/utility"/>
+									<listOptionValue builtIn="false" value="../source/Firmata"/>
 									<listOptionValue builtIn="false" value="../source/artik_cloud"/>
 									<listOptionValue builtIn="false" value="/home/mhanuel/Devel/Networking/ArduinoJson/include"/>
 									<listOptionValue builtIn="false" value="../source/winc1500_firmware_updater"/>

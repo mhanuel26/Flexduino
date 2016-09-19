@@ -10,7 +10,9 @@ source/Firmata/Firmata.o: ../source/Firmata/Firmata.cpp \
  ../drivers/fsl_clock.h ../utilities/fsl_debug_console.h \
  ../drivers/fsl_common.h ../source/winc1500/Stream.h \
  ../source/winc1500/Arduino.h ../source/winc1500/Print.h \
- ../source/winc1500/WString.h ../source/winc1500/Printable.h
+ ../source/winc1500/WString.h ../source/winc1500/Printable.h \
+ ../source/TinyWebServer/Serial.h ../source/winc1500/IPAddress.h \
+ ../source/winc1500/Printable.h
 
 ../source/Firmata/Firmata.h:
 
@@ -59,5 +61,11 @@ source/Firmata/Firmata.o: ../source/Firmata/Firmata.cpp \
 ../source/winc1500/Print.h:
 
 ../source/winc1500/WString.h:
+
+../source/winc1500/Printable.h:
+
+../source/TinyWebServer/Serial.h:
+
+../source/winc1500/IPAddress.h:
 
 ../source/winc1500/Printable.h:

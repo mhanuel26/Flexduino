@@ -43,7 +43,9 @@ source/main.o: ../source/main.cpp ../board/board.h \
  ../source/winc1500/WiFiClient.h ../source/cameraLib/camera.h \
  ../source/audioLib/AudioFlex.h ../source/audioLib/audio_dma.h \
  ../source/audioLib/pdm2pcm.h ../drivers/fsl_edma.h \
- ../source/winc1500_firmware_updater/firmware_updater.h
+ ../source/winc1500_firmware_updater/firmware_updater.h \
+ ../source/Firmata/firmata_app.h ../source/Firmata/Firmata.h \
+ ../source/Firmata/Boards.h
 
 ../board/board.h:
 
@@ -206,3 +208,9 @@ source/main.o: ../source/main.cpp ../board/board.h \
 ../drivers/fsl_edma.h:
 
 ../source/winc1500_firmware_updater/firmware_updater.h:
+
+../source/Firmata/firmata_app.h:
+
+../source/Firmata/Firmata.h:
+
+../source/Firmata/Boards.h:

@@ -85,6 +85,9 @@ extern "C" {
 // firmware updater (.ino as a library)
 #include "firmware_updater.h"
 
+// Example Firmata APP
+#include "firmata_app.h"
+
 SerialConsole Serial;
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght);
@@ -101,6 +104,7 @@ char pass[] = "mooi2409*";   // your network password
 int keyIndex = 0;                 // your network key Index number (needed only for WEP)
 int status = WL_IDLE_STATUS;
 
+#define USE_FIRMATA			1
 #define FIRMWARE_UPDATER	0
 #define USE_WEBSOCK_SERVER	0
 #if (ARTIK_CONN_PROTOCOL == ARTIK_USE_REST_CLIENT)
@@ -159,9 +163,9 @@ SipServer  sipServer;
 extern TinyWebServer web;
 extern WebSocketsServer webSocket;
 extern AudioFlexClass AudioFlex;
-extern artikLand Flexartik;
 
 #if (ARTIK_CONN_PROTOCOL == ARTIK_USE_WEBSOCK_CLIENT)
+extern artikLand Flexartik;
 WebSocketsClient webSockClient;
 #endif
 
@@ -207,6 +211,10 @@ void setup(void){
 #endif
 	}
 #endif
+
+#if USE_FIRMATA
+	firmApp.initTransport();
+#else
 	// check for the presence of the shield:
 	if (WiFi.status() == WL_NO_SHIELD) {
 		PRINTF("WiFi shield not present");
@@ -224,6 +232,8 @@ void setup(void){
 	}
 	// you're connected now, so print out the status:
 	printWifiStatus();
+#endif
+
 #if netperf_test
 	// netperf test
 	perfServer.begin();
@@ -240,6 +250,11 @@ void setup(void){
 	webSockClient.beginSSL("api.artik.cloud", 443, "/v1.1/websocket?ack=true", "");
 	webSockClient.onEvent(webSocketArtikEvent);
 #endif
+
+#if USE_FIRMATA
+	firmApp.setup();
+#endif
+
 #if USE_WEBSOCK_SERVER
 	// init webSockets server
     webSocket.begin();
@@ -451,11 +466,16 @@ int main(void) {
 	delay(10*60*1000); // delay 10 min
     status ^= true;
 #endif
+
+#if USE_FIRMATA
+	firmApp.process();
+#endif
+
 #endif	// Firmware Updater
 	};				// end of endless loop
 }
 
-void printWifiStatus() {
+void printWifiStatus(void) {
 	// print the SSID of the network you're attached to:
 	Serial.print("SSID: ");
 	Serial.println(WiFi.SSID());

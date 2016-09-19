@@ -34,7 +34,6 @@
 #define randomSeed
 //#define random	getTRN
 #define bit(b) (1UL << (b))
-#define delay	_delay_ms
 #endif
 
 //#define DEBUG_WEBSOCKETS(...) Serial1.printf( __VA_ARGS__ )
