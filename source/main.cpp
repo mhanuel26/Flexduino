@@ -30,6 +30,7 @@
  *	Flexduino Platform library is licensed under LGPLv2.1
  *
  **/
+#include "fsl_port.h"
 
 #include "board.h"
 #include "pin_mux.h"
@@ -90,12 +91,27 @@ extern "C" {
 
 SerialConsole Serial;
 
+//** here meanwhile we test...
+// Imgur stuff
+#include "Base64.h"
+#include <ArduinoJson.h>
+extern uint8_t imgBuffer[10000];
+String imgur_token = String("2b57b2174304140900b03fd5dfe93b5ebe4a4d80");
+String client_ID = String("acbd3bf5d24ffdd");
+//String AuthorizationDataImgur =  "Authorization: Bearer " + imgur_token;
+String AuthorizationDataImgur =  "Authorization: Client-ID " + client_ID;
+uint8_t __attribute__((aligned(32), section(".myRAM"))) tmpBuf[10500];
+extern char buf[200];
+
+
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght);
 
 bool ws_send_file(uint8_t num, const char* filename);
 
 static void put_rc (FRESULT rc);
 void printWifiStatus();
+
+static void sendImgurImageCb(void);
 
 char ssid[] = "MOOI";      // your network SSID (name)
 char pass[] = "mooi2409*";   // your network password
@@ -104,18 +120,19 @@ char pass[] = "mooi2409*";   // your network password
 int keyIndex = 0;                 // your network key Index number (needed only for WEP)
 int status = WL_IDLE_STATUS;
 
-#define USE_FIRMATA			1
+#define USE_FIRMATA			0
 #define FIRMWARE_UPDATER	0
-#define USE_WEBSOCK_SERVER	0
+#define USE_WEBSOCK_SERVER	0			// Enable to use WebSocket server to stream pictures using javascript worker
 #if (ARTIK_CONN_PROTOCOL == ARTIK_USE_REST_CLIENT)
 #define ARTIK_REST_CLIENT	1
 #else
 #define ARTIK_REST_CLIENT	0
 #endif
 
+#define IMGUR_CLIENT 	1
 #define SERVER_ENABLE	0
 #if defined(OV7670)
-#define fps_avg			1			// change this one.
+#define fps_avg			0			// change this one.
 #else
 #define fps_avg			0
 #endif
@@ -128,9 +145,10 @@ static void testSdCard(FileFs *FileFsObj);		// A function to test SD card only a
 BYTE Buff[SD_FILE_SIZE]; /* File read buffer (80 SD card blocks to let multiblock operations (if file not fragmented) */
 #endif
 
-#if (SSL_CLIENT_TEST | ARTIK_REST_CLIENT)
+#if (SSL_CLIENT_TEST | ARTIK_REST_CLIENT | IMGUR_CLIENT)
 //WiFiClient client;
 WiFiSSLClient client;
+extern String AuthorizationData;
 #endif
 
 #if SSL_CLIENT_TEST
@@ -138,6 +156,11 @@ char server[] = "www.google.com";    // name address for Google (using DNS)
 #elif ARTIK_REST_CLIENT
 char server[] = "api.artik.cloud";
 int port = 443; //(port 443 is default for HTTPS)
+#endif
+
+#if IMGUR_CLIENT
+char imgur_url[] = "api.imgur.com";		//"api.imgur.com";
+int port = 443; 	//(port 443 is default for HTTPS)
 #endif
 
 #if netperf_test
@@ -180,7 +203,7 @@ void init_bsp(void){
 void setup(void){
 	init_bsp();
 #if defined(OV7670)
-	//added to camera firmware - not sure if it was because USB needed or FlexIO
+	//added to camera firmware html- not sure if it was because USB needed or FlexIO
 	CLOCK_SetClkOutClock(0x06);
 	// our camera initialization
 	camera.begin();
@@ -232,6 +255,7 @@ void setup(void){
 	}
 	// you're connected now, so print out the status:
 	printWifiStatus();
+
 #endif
 
 #if netperf_test
@@ -250,6 +274,7 @@ void setup(void){
 	webSockClient.beginSSL("api.artik.cloud", 443, "/v1.1/websocket?ack=true", "");
 	webSockClient.onEvent(webSocketArtikEvent);
 #endif
+
 
 #if USE_FIRMATA
 	firmApp.setup();
@@ -306,7 +331,6 @@ void setup(void){
  */
 
 int main(void) {
-
 #if FIRMWARE_UPDATER
 	init_bsp();			//init Serial port i.e.
 	nm_bsp_init();
@@ -328,26 +352,42 @@ int main(void) {
 	AudioFlex.startMic();
 	uint32_t start = millis();
 #endif
-#endif	// Firmware updater
 
-#if ARTIK_REST_CLIENT
+#if (ARTIK_CONN_PROTOCOL != ARTIK_DISABLE)
+	uint32_t start = millis();
 	bool status = false;
+#endif
+
+#if (ARTIK_CONN_PROTOCOL ==	ARTIK_USE_REST_CLIENT)
 	client.connect(server, port);
 	delay(1000);
 #endif
 
-	int start = millis();
-	bool status = false;
+#if IMGUR_CLIENT
+	// register a callback to send image to Imgur
+	camera.registerSingleCaptureCb(sendImgurImageCb);
+#endif
+
+#if IMGUR_CLIENT
+#if defined(OV7670)
+	// just to test Imgur
+	camera.picturemode();
+	camera.snapshot();
+#endif
+#endif
+
+#endif	// Firmware updater
+
 	for(;;){
 #if FIRMWARE_UPDATER
 //	updater_loop();
 #else
 #if defined(OV7670)
-		if(camera.videomode() == bitbang){							// this will be a slow video since, we are acquiring a frame, then compress to jpeg
-			if(camera.shotdone() == true){							// save to SD card and then read from SD card to send to web client...
+		if(camera.videomode() == bitbang){			// this is bitbang video mode, since we can only capture one image at a time
+			if(camera.shotdone() == true){						// here we are getting frame and sending to websocket client
 				camera.snapshot();
 #if fps_avg
-				if(fcount >= 9){									// we got here with gcount = 0 but has acquire one frame
+				if(fcount >= 9){									// we got here with count = 0 but has acquire one frame
 					favg = 10000.0/(millis() - nframes_time);
 					nframes_time = millis();
 					fcount = 0;
@@ -362,7 +402,13 @@ int main(void) {
 #endif
 			}
 		}
-		camera.process();
+//		if(camera.videomode() == single_capture){
+//			// handle single capture to RAM buffer
+//			if(camera.shotdone() == true){
+//				// this wil be poll mode ...
+//			}
+//		}
+		camera.process();			// keep an eye for  image capture completeness.
 #endif
 
 #if PLAYBACK_EN
@@ -441,7 +487,7 @@ int main(void) {
 		// Automated POST data section
 		client.print("Content-Length: ");
 		// add the length
-		client.println(loadBufferParam(String("status"), &status, Boolean));
+		client.println(build_simple_msg(String("status"), &status, Boolean));
 		client.println();
 		client.println(buf);
 
@@ -473,6 +519,102 @@ int main(void) {
 
 #endif	// Firmware Updater
 	};				// end of endless loop
+}
+
+int loadImageInJson(void){
+	using namespace ArduinoJson;
+
+	StaticJsonBuffer<6000> jsonBuffer; 				// reserve spot in memory
+	JsonObject& root = jsonBuffer.createObject(); 		// create root objects
+	int encodedLen = base64_enc_len(camera.getImgSize());
+	char *encoded = (char*)malloc(encodedLen*sizeof(char));
+	char *input = (char*)&imgBuffer[0];
+	uint16_t imgSize = camera.getImgSize();
+	base64_encode(encoded, input, imgSize);
+	root["image"] = encoded;			//"Testing the Fucking Length Issue";	//
+//	root["album"] = "z4XS8";			// Id of the album - can be seen on URL page of album
+	root["type"] = "base64";
+//	root["name"] = "testFlexduino.jpg";
+	root["title"] = "FlexduinoLiveTest";
+	memset((void *)tmpBuf, 0, sizeof(tmpBuf));
+	root.printTo((char *)tmpBuf, sizeof(tmpBuf)); // JSON-print to buffer
+	int length =  root.measureLength();
+	free(encoded);
+	return (length); 							// also return length
+}
+
+static void sendImgurImageCb( void ){
+	Serial.println("trying to connect to server");
+	if(client.connect(imgur_url, 443)){
+
+
+		client.println("GET /3/image/1jPPEiT HTTP/1.1");
+		client.println("Host: api.imgur.com");
+		client.println("Connection: close");
+		client.println(AuthorizationDataImgur);
+		client.println();
+
+
+//		Serial.println(" connected to Imgur - Send image");
+//		// client stuff
+//		client.println("POST /3/image.json HTTP/1.1");
+//		Serial.println("PASS 1");
+//		client.println("Host: api.imgur.com");
+//		Serial.println("PASS 2");
+//		client.println("Accept: */*");
+//		Serial.println("PASS 3");
+//		client.println("Content-Type: application/json");
+//		Serial.println("PASS 4");
+////		client.println("Cache-Control: no-cache");
+//		client.println("Connection: close");
+//		Serial.println("PASS 5");
+//		client.println(AuthorizationDataImgur);
+//		Serial.println("PASS 6");
+//		// Automated POST data section
+//		client.print("Content-Length: ");
+//		Serial.println("PASS 7");
+//		// add the length
+//		client.println(loadImageInJson());
+//		Serial.println("PASS 8");
+//		client.println();
+//		client.println((char*)&tmpBuf[0]);
+//		Serial.println("PASS 9");
+
+//		Serial.println("POST /3/upload HTTP/1.1");
+//		Serial.println("Host: api.imgur.com");
+//		Serial.println("Accept: */*");
+//		Serial.println("Content-Type: application/json");
+//		Serial.println("Connection: keep-alive");
+//		Serial.println(AuthorizationDataImgur);
+//		// Automated POST data section
+//		Serial.print("Content-Length: ");
+//		// add the length
+//		Serial.println(loadImageInJson());
+//		Serial.println();
+//		Serial.println((char*)&tmpBuf[0]);
+
+
+	}
+//	Serial.println("Send Image done - wait until client!");
+	unsigned long start = millis();
+	for(;;){
+		if(millis() - start >= 20000)
+			break;
+		while (client.available()) {
+		  char c = client.read();
+		  Serial.write(c);
+		}
+	}
+    if (!client.connected()) {
+      Serial.println();
+      Serial.println("disconnecting from server 1.");
+      client.stop();
+    }else{
+        Serial.println();
+        Serial.println("disconnecting from server 2.");
+        client.stop();
+    }
+    Serial.println("leaving sendImgurImageCb function");
 }
 
 void printWifiStatus(void) {
@@ -610,7 +752,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         		// need to inform about its ready, javascript will disable picture to SD file if not in video streaming mode
         	}else if(!strncmp((const char*)payload, "video_start", strlen("video_start"))){
         		Serial.println("receive command for start video");
-        		camera.startvideo(num);
+        		camera.startvideo(num);				// this function is just faking video by starting a camera snapshot to capture YUV image and convert to jpeg
 #if fps_avg
         		print_period = millis();
         		nframes_time = millis();

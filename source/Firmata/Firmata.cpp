@@ -469,6 +469,7 @@ void FirmataClass::sendSysex(byte command, byte bytec, byte *bytev)
  * @param command Must be STRING_DATA
  * @param string A pointer to the char string
  */
+
 void FirmataClass::sendString(byte command, const char *string)
 {
   if (command == STRING_DATA) {

@@ -54,6 +54,7 @@ source/Firmata/utility \
 source/Firmata \
 source/FatFs \
 source/FatFs/option \
+source/Base64 \
 drivers \
 dma_manager \
 board \

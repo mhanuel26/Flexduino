@@ -61,9 +61,6 @@ void BOARD_InitPins(void)
 
     // Configure SD card CS pin
     PORT_SetPinMux(PORTC, 0U, kPORT_MuxAsGpio);
-    /* Configure EN PTB20 pin as output. */
-    PORT_SetPinMux(PORTB, 20U, kPORT_MuxAsGpio);
-
 
     // PORT D SPI configuration WINC1500
     /* Enable SW port clock */
@@ -95,8 +92,6 @@ void BOARD_InitPins(void)
     config.slewRate = kPORT_FastSlewRate;
     PORT_SetPinConfig(PORTD, 7U, &config);
 //    PORT_SetPinMux(PORTD, 7U, kPORT_MuxAlt7);
-    /* Enable SW port clock */
-//    CLOCK_EnableClock(kCLOCK_PortB);
     // PTC0 SD CS (handle by software)
 
     // INIT MEMS FLEXIO
@@ -146,6 +141,8 @@ void BOARD_InitPins(void)
     PORT_SetPinMux(PORTB, 21u, kPORT_MuxAlt7); /*!< FXIO_D9 -> OV7670_D5 */
     PORT_SetPinMux(PORTB, 22u, kPORT_MuxAlt7); /*!< FXIO_D10 -> OV7670_D6 */
     PORT_SetPinMux(PORTB, 23u, kPORT_MuxAlt7); /*!< FXIO_D11 -> OV7670_D7 */
+
+//
 
     /* Configure OV7670 ASYN */
     vsyncPinConfig.mux = kPORT_MuxAsGpio;

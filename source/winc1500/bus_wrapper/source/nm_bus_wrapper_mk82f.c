@@ -48,7 +48,7 @@
 /*******************************************************************************
  * K82F Definitions
  ******************************************************************************/
-#define TRANSFER_BAUDRATE 40000000U /*! Transfer baudrate - 40M */
+#define TRANSFER_BAUDRATE 25000000U /*! Transfer baudrate - 40M */
 #define WINC_DSPI_MASTER_PCS kDSPI_MasterPcs1
 #define WINC_DSPI_MASTER_BASEADDR SPI0
 #define DSPI_MASTER_CLK_SRC DSPI0_CLK_SRC

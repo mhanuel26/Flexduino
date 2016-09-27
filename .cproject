@@ -52,7 +52,7 @@
 							<tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.949943056" name="Cross ARM C Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler">
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs.987337078" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs" useByScannerDiscovery="false" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="&quot;CPU_MK82FN256VDC15&quot;"/>
-									<listOptionValue builtIn="false" value="NO_OV7670"/>
+									<listOptionValue builtIn="false" value="OV7670"/>
 									<listOptionValue builtIn="false" value="__FPU_PRESENT"/>
 									<listOptionValue builtIn="false" value="ARM_MATH_CM4"/>
 									<listOptionValue builtIn="false" value="ARM_MATH_CM4"/>
@@ -64,6 +64,7 @@
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.std.1888305391" name="Language standard" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.std" useByScannerDiscovery="true" value="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.std.gnu99" valueType="enumerated"/>
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.include.paths.1504903422" name="Include paths (-I)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="../source/cameraLib"/>
+									<listOptionValue builtIn="false" value="../source/Base64"/>
 									<listOptionValue builtIn="false" value="/home/mhanuel/Devel/Networking/ArduinoJson/include"/>
 									<listOptionValue builtIn="false" value="../source/winc1500_firmware_updater"/>
 									<listOptionValue builtIn="false" value="../source/Wire"/>
@@ -96,11 +97,12 @@
 									<listOptionValue builtIn="false" value="NOSIPSERVER"/>
 									<listOptionValue builtIn="false" value="HAVE_CONFIG_H"/>
 									<listOptionValue builtIn="false" value="OSIP_MONOTHREAD"/>
-									<listOptionValue builtIn="false" value="NO_OV7670"/>
+									<listOptionValue builtIn="false" value="OV7670"/>
 									<listOptionValue builtIn="false" value="WINC1500"/>
 								</option>
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.compiler.include.paths.2108717467" name="Include paths (-I)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.compiler.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="../source/FatFs"/>
+									<listOptionValue builtIn="false" value="../source/Base64"/>
 									<listOptionValue builtIn="false" value="../source/Firmata/utility"/>
 									<listOptionValue builtIn="false" value="../source/Firmata"/>
 									<listOptionValue builtIn="false" value="../source/artik_cloud"/>

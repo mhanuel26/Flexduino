@@ -122,11 +122,6 @@ void nm_bsp_reset(void)
 	nm_bsp_sleep(100);
 	GPIO_SetPinsOutput(BOARD_WINC_RST_GPIO, 1U << BOARD_WINC_RST_GPIO_PIN);
 	nm_bsp_sleep(100);
-
-//	GPIO_ClearPinsOutput(BOARD_WINC_RST_GPIO, 1U << BOARD_WINC_RST_GPIO_PIN);
-//	nm_bsp_sleep(200);
-//	GPIO_SetPinsOutput(BOARD_WINC_RST_GPIO, 1U << BOARD_WINC_RST_GPIO_PIN);
-//	nm_bsp_sleep(100);
 }
 
 /*

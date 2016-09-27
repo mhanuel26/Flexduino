@@ -34,6 +34,7 @@ RM := rm -rf
 -include source/Firmata/subdir.mk
 -include source/FatFs/option/subdir.mk
 -include source/FatFs/subdir.mk
+-include source/Base64/subdir.mk
 -include source/subdir.mk
 -include drivers/subdir.mk
 -include dma_manager/subdir.mk

@@ -39,7 +39,7 @@ extern "C" {
 
 #include <assert.h>
 
-#define DEBUG_CAM	0
+#define DEBUG_CAM	1
 #define DEBUG_YUV	0
 
 /*******************************************************************************
@@ -72,17 +72,20 @@ const unsigned char bmp_header[BMPIMAGEOFFSET] =
 /*******************************************************************************
  * Variables
  ******************************************************************************/
+uint8_t __attribute__((aligned(32), section(".myRAM"))) imgBuffer[10000];			// don't know the precise size so it's better to oversize it...
+																						// nxp you rock but please add memory to this monster...
 videoType webCam::video_type_ = no_video;
 img_fmt	webCam::format_ = yuv422;
 int webCam::file_jpg_ = -1;
-volatile bool webCam::video_mode_ = false;
 volatile int8_t webCam::cur_flexio_macroblk_ = -1;
 int8_t webCam::cur_stack_macroblk_ = -1;
-
 int8_t webCam::wsnum_ = -1;
+uint8_t* webCam::_imgPtr = &imgBuffer[0];
+uint16_t webCam::_imgSize = 0;
 
 volatile __attribute__((aligned(32), section(".myRAM"))) uint8_t g_FlexioCameraMacroblockBuffer[5][MACROBLOCK];
 //extern volatile uint8_t g_FlexioCameraFrameBuffer[2][OV7670_FRAME_BYTES + 32];
+
 
 extern FileFs file;
 extern SerialConsole Serial;
@@ -132,6 +135,21 @@ volatile void webCam::jpegMacroBlkCb(uint8_t buf){
 	cur_flexio_macroblk_ = buf;
 }
 
+void webCam::registerSingleCaptureCb( imageSingleCaptureCb fnctCb ){
+	captureCb = fnctCb;
+}
+
+void webCam::picturemode(void){
+	video_type_ = single_capture;
+}
+
+void webCam::picturemode(saveMemory memory){
+	if(memory == RAM){
+		video_type_ = single_capture;
+	}else{
+		video_type_ = single_2sdcard;
+	}
+}
 
 void webCam::startvideo(uint8_t wsnum){
 	// this a simple wrapper preparing for the advance hack...now let's play...
@@ -154,17 +172,20 @@ videoType webCam::videomode(){
 }
 
 void webCam::snapshot(){
-	if(!video_mode_){
-		shot_done = false;
 #if DEBUG_CAM
-		Serial.println("start image capture command");
+	Serial.println("start image capture command");
 #endif
-		FLEXIO_Ov7670StartCapture( 1 );
-	}
+	shot_done = false;
+	_imgSize = 0;
+	FLEXIO_Ov7670StartCapture( 1 );
 }
 
 bool webCam::shotdone(){
 	return shot_done;
+}
+
+uint16_t webCam::getImgSize(void){
+	return _imgSize;
 }
 
 void webCam::process(){
@@ -177,71 +198,117 @@ void webCam::process(){
 //		assert(!((cur_stack_macroblk_ >= MACROLINES) || (cur_stack_macroblk_ < 0)));
 		uint8_t *dat = (uint8_t *)&g_FlexioCameraMacroblockBuffer[cur_stack_macroblk_][0];
 		compress_macroblock(dat);
-		if(cur_stack_macroblk_ >= (MACROLINES-1)){				// let's hardwire this to test now...
-			shot_done = true;
-			cur_stack_macroblk_ = -1;
-			cur_flexio_macroblk_ = -1;
-		}
 	}
 }
 
 
 void webCam::write_jpeg(const unsigned char * _buffer, const unsigned int _n){
-	if(video_type_ != no_video){
-		webSocket.sendBIN(wsnum_, (const uint8_t*)_buffer, _n);
-	}else{
-		if(file_jpg_ < 0)
-			return;
-		// disable PIT2 audio interrupt for SD card access
-		PIT_DisableInterrupts(PIT, kPIT_Chnl_2, kPIT_TimerInterruptEnable);
-		file.write(file_jpg_, (void*)_buffer, _n);
-		PIT_EnableInterrupts(PIT, kPIT_Chnl_2, kPIT_TimerInterruptEnable);
+	switch(video_type_){
+		case bitbang:
+			webSocket.sendBIN(wsnum_, (const uint8_t*)_buffer, _n);
+		break;
+		case single_2sdcard:
+		case single_capture:
+			// here we are setting a capture to a RAM buffer
+			memcpy(_imgPtr, _buffer, _n); 		// why the f.. underscore.
+			_imgPtr += _n;			// increase the pointer
+		break;
+		default:
+			//not implemented or do not need any processing here
+		break;
 	}
-
 }
 
 // this function will jpeg encode a macroblock, normally n number of 16 by 16 YUV microblocks, where n is given by IMAGE_WIDTH/16
 bool webCam::compress_macroblock(uint8_t *buffer){
 	if(cur_stack_macroblk_ == 0){
+		if(video_type_ == no_video){
+#if DEBUG_CAM
+			Serial.println("Open JPG file");
+#endif
+			openJpeg();
+		}
 	    // write .jpeg header and start-of-image marker
 	    huffman_start(IMG_HEIGHT & -8, IMG_WIDTH & -8);
 	    huffman_resetdc();
 	}
 	encode_line_yuv(buffer,  cur_stack_macroblk_);
 	if(cur_stack_macroblk_ >= (MACROLINES - 1)){
+		// set internals
+		shot_done = true;
+		cur_stack_macroblk_ = -1;
+		cur_flexio_macroblk_ = -1;
 		// write .jpeg footer (end-of-image marker)
 		huffman_stop();
-		// send end command to javascript worker
-		webSocket.sendTXT(wsnum_, "end");
+		int fh;
+		switch(video_type_){
+			case bitbang:
+				// send end command to javascript worker
+				webSocket.sendTXT(wsnum_, "end");
+			break;
+			case single_capture:
+				// do something with image in buffer
+				// or just let the upper layer to poll shot_done variable and take action
+				// not before setting buffer size
+				_imgSize = _imgPtr - &imgBuffer[0];
+				// If there is a callback defined
+#if DEBUG_CAM
+				Serial.println("JPG image capture done");
+#endif
+				if(captureCb)
+					captureCb();
+			break;
+			case single_2sdcard:
+				// set the buffer size
+				_imgSize = _imgPtr - &imgBuffer[0];
+				//  this nmeed abstraction, we are mixing something from Audio Playback here...
+#if PLAYBACK_EN
+				PIT_DisableInterrupts(PIT, kPIT_Chnl_2, kPIT_TimerInterruptEnable);
+#endif
+				// save the jpeg image to SD card
+				fh = file.open("single_capture.jpg", FA_WRITE | FA_CREATE_ALWAYS);
+				if(fh < 0)
+					return false;
+				file.write(fh, (void*)&imgBuffer[0], _imgSize);
+				file.close(fh);
+#if PLAYBACK_EN
+				// again audio...
+				PIT_EnableInterrupts(PIT, kPIT_Chnl_2, kPIT_TimerInterruptEnable);
+#endif
+#if DEBUG_CAM
+				Serial.println("JPG file saved under single capture mode");
+#endif
+			break;
+			default:
+				//not implemented
+			break;
+		}
 		return true;
 	}
 	return false;
 }
 
+// The following functions are not used in our mode of conerting to jpeg each macroblock..
+
+
 void webCam::openJpeg(void){
-	if(video_type_ == no_video){		// If need to save picture to file
-		// try to open output file for writing
-		file.remove("snapshot.jpg");
-		PIT_DisableInterrupts(PIT, kPIT_Chnl_2, kPIT_TimerInterruptEnable);
-		file_jpg_ = file.open("snapshot.jpg", FA_WRITE | FA_CREATE_ALWAYS);
-		PIT_EnableInterrupts(PIT, kPIT_Chnl_2, kPIT_TimerInterruptEnable);
-		if (file_jpg_ < 0) {
-			Serial.println("Cannot open jpeg file");
-			return;
-		}
-	}
+	// this was not needed anymore...
 }
 
 void webCam::closeJpeg(void){
     // write .jpeg footer (end-of-image marker)
     huffman_stop();
-    if(video_type_ == no_video){		// If need to save picture to file close the file
-		PIT_DisableInterrupts(PIT, kPIT_Chnl_2, kPIT_TimerInterruptEnable);
-		file.close(file_jpg_);
-		PIT_EnableInterrupts(PIT, kPIT_Chnl_2, kPIT_TimerInterruptEnable);
-    }else{
-    	// send end command to javascript worker
-    	webSocket.sendTXT(wsnum_, "end");
+    switch(video_type_){
+		case bitbang:
+			// send end command to javascript worker
+			webSocket.sendTXT(wsnum_, "end");
+		break;
+		case single_capture:
+
+		break;
+		default:
+			//not implemented
+		break;
     }
 }
 
