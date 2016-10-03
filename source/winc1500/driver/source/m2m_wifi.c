@@ -490,12 +490,10 @@ sint8  m2m_wifi_deinit(void * arg)
 }
 
 #include "socket/include/socket_buffer.h"
-extern tstrSocketBuffer gastrSocketBuffer[];
+
 sint8 m2m_wifi_handle_events(void * arg)
 {
 	(void)arg; // Silence "unused" warning
-
-	uint8 i;
 
 	/* Arduino API LIMITATION: */
 	/* To be compliant with the standard Arduino WiFi API socket must be buffered. */
@@ -509,8 +507,10 @@ sint8 m2m_wifi_handle_events(void * arg)
 	/* Consequently, the Arduino sketch must NOT block on reading only one socket if */
 	/* several sockets are to be used. Instead, application must carefully read for */
 	/* all sockets, anytime. */
-	for (i = 0; i < MAX_SOCKET; ++i) {
-		if (gastrSocketBuffer[i].flag && (*(gastrSocketBuffer[i].flag) & SOCKET_BUFFER_FLAG_FULL)) {
+	SOCKET s;
+
+	for (s = 0; s < MAX_SOCKET; ++s) {
+		if (socketBufferIsFull(s)) {
 			return M2M_ERR_FAIL;
 		}
 	}

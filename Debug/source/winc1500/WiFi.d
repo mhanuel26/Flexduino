@@ -26,7 +26,8 @@ source/winc1500/WiFi.o: ../source/winc1500/WiFi.cpp \
  ../source/winc1500/WiFiSSLClient.h ../source/winc1500/WiFiServer.h \
  ../source/winc1500/Server.h ../source/winc1500/bsp/include/nm_bsp.h \
  ../source/winc1500/driver/source/nmasic.h \
- ../source/winc1500/driver/include/m2m_periph.h
+ ../source/winc1500/driver/include/m2m_periph.h \
+ ../source/winc1500/socket/include/m2m_socket_host_if.h
 
 ../source/winc1500/WiFi101.h:
 
@@ -119,3 +120,5 @@ source/winc1500/WiFi.o: ../source/winc1500/WiFi.cpp \
 ../source/winc1500/driver/source/nmasic.h:
 
 ../source/winc1500/driver/include/m2m_periph.h:
+
+../source/winc1500/socket/include/m2m_socket_host_if.h:

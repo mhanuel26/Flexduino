@@ -38,4 +38,23 @@ int nanosleep(const struct timespec  *rqtp, struct timespec *rmtp);
 
 #define NM_EDGE_INTERRUPT	1
 
+//#if !defined(WINC1501_RESET_PIN)
+//  #define WINC1501_RESET_PIN  5
+//#endif
+//#if !defined(WINC1501_INTN_PIN)
+//  #define WINC1501_INTN_PIN   7
+//#endif
+//#if !defined(WINC1501_SPI_CS_PIN)
+//  #define WINC1501_SPI_CS_PIN 10
+//#endif
+//#if !defined(WINC1501_CHIP_EN_PIN)
+//  #define WINC1501_CHIP_EN_PIN -1
+//#endif
+
+extern int8_t gi8Winc1501CsPin;
+extern int8_t gi8Winc1501ResetPin;
+extern int8_t gi8Winc1501IntnPin;
+extern int8_t gi8Winc1501ChipEnPin;
+
+
 #endif /* _NM_BSP_MK82F_H_ */

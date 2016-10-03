@@ -32,6 +32,7 @@
  **/
 #include "fsl_port.h"
 
+#include "main.h"
 #include "board.h"
 #include "pin_mux.h"
 #include "clock_config.h"
@@ -71,6 +72,7 @@ extern "C" {
 
 // ARTIK CLOUD SUPPORT
 #include "artik.h"
+#include "mm_iot.h"
 
 // Test SSL client
 #define SSL_CLIENT_TEST	0
@@ -91,27 +93,12 @@ extern "C" {
 
 SerialConsole Serial;
 
-//** here meanwhile we test...
-// Imgur stuff
-#include "Base64.h"
-#include <ArduinoJson.h>
-extern uint8_t imgBuffer[10000];
-String imgur_token = String("2b57b2174304140900b03fd5dfe93b5ebe4a4d80");
-String client_ID = String("acbd3bf5d24ffdd");
-//String AuthorizationDataImgur =  "Authorization: Bearer " + imgur_token;
-String AuthorizationDataImgur =  "Authorization: Client-ID " + client_ID;
-uint8_t __attribute__((aligned(32), section(".myRAM"))) tmpBuf[10500];
-extern char buf[200];
-
-
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght);
 
 bool ws_send_file(uint8_t num, const char* filename);
 
 static void put_rc (FRESULT rc);
 void printWifiStatus();
-
-static void sendImgurImageCb(void);
 
 char ssid[] = "MOOI";      // your network SSID (name)
 char pass[] = "mooi2409*";   // your network password
@@ -120,16 +107,12 @@ char pass[] = "mooi2409*";   // your network password
 int keyIndex = 0;                 // your network key Index number (needed only for WEP)
 int status = WL_IDLE_STATUS;
 
-#define USE_FIRMATA			0
+#define USE_FIRMATA			1
 #define FIRMWARE_UPDATER	0
 #define USE_WEBSOCK_SERVER	0			// Enable to use WebSocket server to stream pictures using javascript worker
-#if (ARTIK_CONN_PROTOCOL == ARTIK_USE_REST_CLIENT)
-#define ARTIK_REST_CLIENT	1
-#else
-#define ARTIK_REST_CLIENT	0
-#endif
 
-#define IMGUR_CLIENT 	1
+
+#define IMGUR_CLIENT 	0
 #define SERVER_ENABLE	0
 #if defined(OV7670)
 #define fps_avg			0			// change this one.
@@ -155,13 +138,14 @@ extern String AuthorizationData;
 char server[] = "www.google.com";    // name address for Google (using DNS)
 #elif ARTIK_REST_CLIENT
 char server[] = "api.artik.cloud";
-int port = 443; //(port 443 is default for HTTPS)
 #endif
 
 #if IMGUR_CLIENT
-char imgur_url[] = "api.imgur.com";		//"api.imgur.com";
-int port = 443; 	//(port 443 is default for HTTPS)
+char imgur_url[] = "api.imgur.com";
 #endif
+
+int port = 443;
+extern mm_iot	mmIoT;
 
 #if netperf_test
 //SipServer  sipServer;
@@ -346,6 +330,7 @@ int main(void) {
 	bool onetime = true;
 	playtimeout = millis();
 #endif
+
 #if MEMS_TEST
 	AudioFlex.turnRecordingOn();
 	Serial.println("Recording Starting");
@@ -365,7 +350,7 @@ int main(void) {
 
 #if IMGUR_CLIENT
 	// register a callback to send image to Imgur
-	camera.registerSingleCaptureCb(sendImgurImageCb);
+	camera.registerSingleCaptureCb(sendImageCb);
 #endif
 
 #if IMGUR_CLIENT
@@ -473,7 +458,7 @@ int main(void) {
 		status ^= true;
 	}
 #endif
-#if ARTIK_REST_CLIENT
+#if ARTIK_REST_CLIENT_4_TEST
     if (!client.connected()) {
       Serial.println(" error ");
     } else {
@@ -521,101 +506,6 @@ int main(void) {
 	};				// end of endless loop
 }
 
-int loadImageInJson(void){
-	using namespace ArduinoJson;
-
-	StaticJsonBuffer<6000> jsonBuffer; 				// reserve spot in memory
-	JsonObject& root = jsonBuffer.createObject(); 		// create root objects
-	int encodedLen = base64_enc_len(camera.getImgSize());
-	char *encoded = (char*)malloc(encodedLen*sizeof(char));
-	char *input = (char*)&imgBuffer[0];
-	uint16_t imgSize = camera.getImgSize();
-	base64_encode(encoded, input, imgSize);
-	root["image"] = encoded;			//"Testing the Fucking Length Issue";	//
-//	root["album"] = "z4XS8";			// Id of the album - can be seen on URL page of album
-	root["type"] = "base64";
-//	root["name"] = "testFlexduino.jpg";
-	root["title"] = "FlexduinoLiveTest";
-	memset((void *)tmpBuf, 0, sizeof(tmpBuf));
-	root.printTo((char *)tmpBuf, sizeof(tmpBuf)); // JSON-print to buffer
-	int length =  root.measureLength();
-	free(encoded);
-	return (length); 							// also return length
-}
-
-static void sendImgurImageCb( void ){
-	Serial.println("trying to connect to server");
-	if(client.connect(imgur_url, 443)){
-
-
-		client.println("GET /3/image/1jPPEiT HTTP/1.1");
-		client.println("Host: api.imgur.com");
-		client.println("Connection: close");
-		client.println(AuthorizationDataImgur);
-		client.println();
-
-
-//		Serial.println(" connected to Imgur - Send image");
-//		// client stuff
-//		client.println("POST /3/image.json HTTP/1.1");
-//		Serial.println("PASS 1");
-//		client.println("Host: api.imgur.com");
-//		Serial.println("PASS 2");
-//		client.println("Accept: */*");
-//		Serial.println("PASS 3");
-//		client.println("Content-Type: application/json");
-//		Serial.println("PASS 4");
-////		client.println("Cache-Control: no-cache");
-//		client.println("Connection: close");
-//		Serial.println("PASS 5");
-//		client.println(AuthorizationDataImgur);
-//		Serial.println("PASS 6");
-//		// Automated POST data section
-//		client.print("Content-Length: ");
-//		Serial.println("PASS 7");
-//		// add the length
-//		client.println(loadImageInJson());
-//		Serial.println("PASS 8");
-//		client.println();
-//		client.println((char*)&tmpBuf[0]);
-//		Serial.println("PASS 9");
-
-//		Serial.println("POST /3/upload HTTP/1.1");
-//		Serial.println("Host: api.imgur.com");
-//		Serial.println("Accept: */*");
-//		Serial.println("Content-Type: application/json");
-//		Serial.println("Connection: keep-alive");
-//		Serial.println(AuthorizationDataImgur);
-//		// Automated POST data section
-//		Serial.print("Content-Length: ");
-//		// add the length
-//		Serial.println(loadImageInJson());
-//		Serial.println();
-//		Serial.println((char*)&tmpBuf[0]);
-
-
-	}
-//	Serial.println("Send Image done - wait until client!");
-	unsigned long start = millis();
-	for(;;){
-		if(millis() - start >= 20000)
-			break;
-		while (client.available()) {
-		  char c = client.read();
-		  Serial.write(c);
-		}
-	}
-    if (!client.connected()) {
-      Serial.println();
-      Serial.println("disconnecting from server 1.");
-      client.stop();
-    }else{
-        Serial.println();
-        Serial.println("disconnecting from server 2.");
-        client.stop();
-    }
-    Serial.println("leaving sendImgurImageCb function");
-}
 
 void printWifiStatus(void) {
 	// print the SSID of the network you're attached to:

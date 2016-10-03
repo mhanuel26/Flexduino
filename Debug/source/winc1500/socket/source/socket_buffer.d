@@ -17,7 +17,9 @@ source/winc1500/socket/source/socket_buffer.o: \
  ../source/winc1500/socket/include/m2m_socket_host_if.h \
  ../source/winc1500/socket/include/socket_buffer.h \
  ../source/winc1500/driver/include/m2m_periph.h \
- ../source/winc1500/driver/include/m2m_types.h
+ ../source/winc1500/driver/include/m2m_types.h \
+ ../source/winc1500/driver/include/m2m_wifi.h \
+ ../source/winc1500/driver/source/nmdrv.h
 
 ../source/winc1500/socket/include/socket.h:
 
@@ -74,3 +76,7 @@ source/winc1500/socket/source/socket_buffer.o: \
 ../source/winc1500/driver/include/m2m_periph.h:
 
 ../source/winc1500/driver/include/m2m_types.h:
+
+../source/winc1500/driver/include/m2m_wifi.h:
+
+../source/winc1500/driver/source/nmdrv.h:

@@ -30,12 +30,12 @@ class WiFiClient : public Client {
 public:
 	WiFiClient();
 	virtual ~WiFiClient(){};
-	WiFiClient(uint8_t sock, uint8_t parentsock = 0);
-	WiFiClient(const WiFiClient& other);
+	WiFiClient(SOCKET sock);
 
 	uint8_t status();
 	uint8_t getSockNum();
-	
+
+
 	int connectSSL(IPAddress ip, uint16_t port);
 	int connectSSL(const char* host, uint16_t port);
 	virtual int connect(IPAddress ip, uint16_t port);
@@ -50,21 +50,14 @@ public:
 	virtual void stop();
 	virtual uint8_t connected();
 	virtual operator bool();
-	virtual WiFiClient& operator =(const WiFiClient& other);
 
 	using Print::write;
 
-	uint32_t _flag;
-
 private:
 	SOCKET _socket;
-	uint32_t _head;
-	uint32_t _tail;
-	uint8_t	_buffer[SOCKET_BUFFER_TCP_SIZE];
+
 	int connect(const char* host, uint16_t port, uint8_t opt);
 	int connect(IPAddress ip, uint16_t port, uint8_t opt, const uint8_t *hostname);
-	void copyFrom(const WiFiClient& other);
-
 };
 
 #endif /* WIFICLIENT_H */

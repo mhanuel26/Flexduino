@@ -26,6 +26,7 @@ private:
 	char *_ssid;   // your network SSID (name)
 	char *_pass;   // your network password
 	uint32_t _start;
+	uint8_t _state;
 };
 
 firmataApp	firmApp(ssid, pass);

@@ -64,6 +64,7 @@
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.std.1888305391" name="Language standard" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.std" useByScannerDiscovery="true" value="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.std.gnu99" valueType="enumerated"/>
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.include.paths.1504903422" name="Include paths (-I)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="../source/cameraLib"/>
+									<listOptionValue builtIn="false" value="../source"/>
 									<listOptionValue builtIn="false" value="../source/Base64"/>
 									<listOptionValue builtIn="false" value="/home/mhanuel/Devel/Networking/ArduinoJson/include"/>
 									<listOptionValue builtIn="false" value="../source/winc1500_firmware_updater"/>
@@ -83,6 +84,7 @@
 									<listOptionValue builtIn="false" value="/home/chroots/arm-devel/usr/local/lib/include/"/>
 									<listOptionValue builtIn="false" value="../source/TinyWebServer"/>
 									<listOptionValue builtIn="false" value="../startup"/>
+									<listOptionValue builtIn="false" value="./source"/>
 									<listOptionValue builtIn="false" value="../board"/>
 									<listOptionValue builtIn="false" value="../utilities"/>
 									<listOptionValue builtIn="false" value="../CMSIS"/>
@@ -113,6 +115,7 @@
 									<listOptionValue builtIn="false" value="../source/audioLib"/>
 									<listOptionValue builtIn="false" value="../source/cameraLib/encoder"/>
 									<listOptionValue builtIn="false" value="../source/cameraLib"/>
+									<listOptionValue builtIn="false" value="../source"/>
 									<listOptionValue builtIn="false" value="../source/cameraLib/ov7670"/>
 									<listOptionValue builtIn="false" value="../source/WebSockets"/>
 									<listOptionValue builtIn="false" value="../source/jrtplib"/>
@@ -139,7 +142,7 @@
 							</tool>
 							<tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.linker.1482457749" name="Cross ARM C++ Linker" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.linker">
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.linker.gcsections.1923479079" name="Remove unused sections (-Xlinker --gc-sections)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.linker.gcsections" value="true" valueType="boolean"/>
-								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.linker.other.1636579314" name="Other linker flags" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.linker.other" value="-specs=nosys.specs -specs=nano.specs -Xlinker -z -Xlinker muldefs -Xlinker -defsym=__heap_size__=0x2000 -Xlinker -defsym=__stack_size__=0x2000" valueType="string"/>
+								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.linker.other.1636579314" name="Other linker flags" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.linker.other" value="-specs=nosys.specs -specs=nano.specs -Xlinker -z -Xlinker muldefs -Xlinker -defsym=__heap_size__=0x8000 -Xlinker -defsym=__stack_size__=0x8000" valueType="string"/>
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.linker.scriptfile.2129095759" name="Script files (-T)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.linker.scriptfile" valueType="stringList">
 									<listOptionValue builtIn="false" value="../MK82FN256xxx15_flash.ld"/>
 								</option>
@@ -214,7 +217,7 @@
 								<inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.input.835308094" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.input"/>
 							</tool>
 							<tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.linker.1196576761" name="Cross ARM C Linker" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.linker.1828355884">
-								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.linker.other.1653474292" name="Other linker flags" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.linker.other" value="-specs=nosys.specs -specs=nano.specs -Xlinker -z -Xlinker muldefs -Xlinker -defsym=__heap_size__=0x2000 -Xlinker -defsym=__stack_size__=0x2000" valueType="string"/>
+								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.linker.other.1653474292" name="Other linker flags" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.linker.other" value="-specs=nosys.specs -specs=nano.specs -Xlinker -z -Xlinker muldefs -Xlinker -defsym=__heap_size__=0x8000 -Xlinker -defsym=__stack_size__=0x8000" valueType="string"/>
 							</tool>
 							<tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.linker.1381332367" name="Cross ARM C++ Linker" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.linker.1482457749"/>
 							<tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.archiver.771375429" name="Cross ARM GNU Archiver" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.archiver.465518183"/>

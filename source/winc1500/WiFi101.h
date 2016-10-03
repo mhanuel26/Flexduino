@@ -33,7 +33,6 @@ extern "C" {
 #include "WiFiSSLClient.h"
 #include "WiFiServer.h"
 
-
 typedef enum {
 	WL_NO_SHIELD = 255,
 	WL_IDLE_STATUS = 0,
@@ -42,7 +41,10 @@ typedef enum {
 	WL_CONNECTED,
 	WL_CONNECT_FAILED,
 	WL_CONNECTION_LOST,
-	WL_DISCONNECTED
+	WL_DISCONNECTED,
+	WL_AP_LISTENING,
+	WL_AP_CONNECTED,
+	WL_AP_FAILED
 } wl_status_t;
 
 /* Encryption modes */
@@ -62,27 +64,25 @@ typedef enum {
 	WL_AP_MODE
 } wl_mode_t;
 
+typedef enum {
+	WL_PING_SUCCESS = 0,
+	WL_PING_DEST_UNREACHABLE,
+	WL_PING_TIMEOUT,
+	WL_PING_UNKNOWN_HOST,
+	WL_PING_ERROR
+} wl_ping_result_t;
+
 class WiFiClass
 {
 public:
-	uint32_t _localip;
-	uint32_t _submask;
-	uint32_t _gateway;
-	int _dhcp;
-	uint32_t _resolve;
-//	byte *_bssid;
-	uint8 *_bssid;
-	wl_mode_t _mode;
-	wl_status_t _status;
-	char _scan_ssid[M2M_MAX_SSID_LEN];
-	uint8_t _scan_auth;
-	char _ssid[M2M_MAX_SSID_LEN];
 	WiFiClient *_client[TCP_SOCK_MAX];
 
 	WiFiClass();
 
+	void setPins(int8_t cs, int8_t irq, int8_t rst, int8_t en = -1);
+
 	int init();
-	
+
 	char* firmwareVersion();
 
 	/* Start Wifi connection with WPA/WPA2 encryption.
@@ -104,8 +104,8 @@ public:
 	 * param ssid: Pointer to the SSID string.
 	 * param channel: Wifi channel to use. Valid values are 1-12.
 	 */
-	uint8_t beginAP(char *ssid);
-	uint8_t beginAP(char *ssid, uint8_t channel);
+	uint8_t beginAP(const char *ssid);
+	uint8_t beginAP(const char *ssid, uint8_t channel);
 	uint8_t beginAP(const char *ssid, uint8_t key_idx, const char* key);
 	uint8_t beginAP(const char *ssid, uint8_t key_idx, const char* key, uint8_t channel);
 
@@ -120,6 +120,7 @@ public:
 	void config(IPAddress local_ip, IPAddress dns_server, IPAddress gateway, IPAddress subnet);
 
 	void disconnect();
+	void end();
 
 	uint8_t *macAddress(uint8_t *mac);
 
@@ -137,18 +138,41 @@ public:
 
 	uint8_t status();
 
-	int inet_aton(const char* aIPAddrString, IPAddress& aResult);
-	int _gethostbyname(const char* aHostname, in_addr_t aResult);
 	int hostByName(const char* hostname, IPAddress& result);
 	int hostByName(const String &hostname, IPAddress& result) { return hostByName(hostname.c_str(), result); }
 
+	uint8_t ping(const char* hostname, uint8_t ttl = 128);
+	uint8_t ping(const String &hostname, uint8_t ttl = 128);
+	uint8_t ping(IPAddress host, uint8_t ttl = 128);
+
 	void refresh(void);
 
+	void lowPowerMode(void);
+	void maxLowPowerMode(void);
+	void noLowPowerMode(void);
+
 private:
-	int _init;
-	char _version[9];
 	uint8_t startConnect(const char *ssid, uint8_t u8SecType, const void *pvAuthInfo);
 	uint8_t startAP(const char *ssid, uint8_t u8SecType, const void *pvAuthInfo, uint8_t channel);
+
+	static void wifi_cb(uint8_t u8MsgType, void *pvMsg);
+	static void resolve_cb(uint8_t * hostName, uint32_t hostIp);
+	static void ping_cb(uint32 u32IPAddr, uint32 u32RTT, uint8 u8ErrorCode);
+
+	int _init;
+	char _version[9];
+
+	uint32_t _localip;
+	uint32_t _submask;
+	uint32_t _gateway;
+	int _dhcp;
+	uint32_t _resolve;
+	byte *_bssid;
+	wl_mode_t _mode;
+	wl_status_t _status;
+	char _scan_ssid[M2M_MAX_SSID_LEN];
+	uint8_t _scan_auth;
+	char _ssid[M2M_MAX_SSID_LEN];
 };
 
 extern WiFiClass WiFi;

@@ -23,13 +23,10 @@
 #include <Udp.h>
 
 class WiFiUDP : public UDP {
-// make it protected to be able to inherit from Sip Server.
-protected:
+private:
 	SOCKET _socket;
-	uint32_t _flag;
-	uint32_t _head;
-	uint32_t _tail;
-	uint8_t	_recvBuffer[SOCKET_BUFFER_UDP_SIZE];
+	uint16_t _port;
+	uint32_t _multiIp;
 	uint16_t _rcvSize;
 	uint16_t _rcvPort;
 	uint32_t _rcvIP;
@@ -46,7 +43,6 @@ public:
 
   // Sending UDP packets
 
-  virtual int beginPacket(uint32_t ip, uint16_t port);
   // Start building up a packet to send to the remote host specific in ip and port
   // Returns 1 if successful, 0 if there was a problem with the supplied IP address or port
   virtual int beginPacket(IPAddress ip, uint16_t port);

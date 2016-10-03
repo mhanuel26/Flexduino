@@ -25,18 +25,19 @@ extern "C" {
 	#include "socket/include/socket_buffer.h"
 	#include "driver/source/nmasic.h"
 	#include "driver/include/m2m_periph.h"
+	#include "socket/include/m2m_socket_host_if.h"
 	#include "bsp/include/nm_bsp_mk82fn256.h"
 }
 
 extern "C" void* C_WiFiClassPtr(){ return (void*)&WiFi; }
 
-extern "C" int C_gethostbyname(void* WiFiClPtr, const char* aHostname, in_addr_t aResult){
-	return static_cast<WiFiClass*>(WiFiClPtr)->_gethostbyname(aHostname, aResult);
-}
+//extern "C" int C_gethostbyname(void* WiFiClPtr, const char* aHostname, in_addr_t aResult){
+//	return static_cast<WiFiClass*>(WiFiClPtr)->_gethostbyname(aHostname, aResult);
+//}
 
 extern "C" uint32_t C_gatewayIP(void* WiFiClPtr){ return static_cast<WiFiClass*>(WiFiClPtr)->gatewayIP(); }
 
-static void wifi_cb(uint8_t u8MsgType, void *pvMsg)
+void WiFiClass::wifi_cb(uint8_t u8MsgType, void *pvMsg)
 {
 	switch (u8MsgType) {
 		case M2M_WIFI_RESP_CON_STATE_CHANGED:
@@ -49,9 +50,13 @@ static void wifi_cb(uint8_t u8MsgType, void *pvMsg)
 
 					// WiFi led ON.
 					m2m_periph_gpio_set_val(M2M_PERIPH_GPIO15, 0);
+				} else if (WiFi._mode == WL_AP_MODE) {
+					WiFi._status = WL_AP_CONNECTED;
 				}
 			} else if (pstrWifiState->u8CurrState == M2M_WIFI_DISCONNECTED) {
 				//SERIAL_PORT_MONITOR.println("wifi_cb: M2M_WIFI_RESP_CON_STATE_CHANGED: DISCONNECTED");
+				socketBufferApDisconnected();
+
 				if (WiFi._mode == WL_STA_MODE) {
 					WiFi._status = WL_DISCONNECTED;
 					if (WiFi._dhcp) {
@@ -59,6 +64,8 @@ static void wifi_cb(uint8_t u8MsgType, void *pvMsg)
 						WiFi._submask = 0;
 						WiFi._gateway = 0;
 					}
+				} else if (WiFi._mode == WL_AP_MODE) {
+					WiFi._status = WL_AP_LISTENING;
 				}
 				// WiFi led OFF (rev A then rev B).
 				m2m_periph_gpio_set_val(M2M_PERIPH_GPIO15, 1);
@@ -152,9 +159,28 @@ static void wifi_cb(uint8_t u8MsgType, void *pvMsg)
 	}
 }
 
-static void resolve_cb(uint8_t * /* hostName */, uint32_t hostIp)
+void WiFiClass::resolve_cb(uint8_t * /* hostName */, uint32_t hostIp)
 {
 	WiFi._resolve = hostIp;
+}
+
+void WiFiClass::ping_cb(uint32 u32IPAddr, uint32 /*u32RTT*/, uint8 u8ErrorCode)
+{
+	if (PING_ERR_SUCCESS == u8ErrorCode) {
+		// Ensure this ICMP reply comes from requested IP address
+		if (WiFi._resolve == u32IPAddr) {
+			WiFi._resolve = WL_PING_SUCCESS;
+		} else {
+			// Another network device replied to the our ICMP request
+			WiFi._resolve = WL_PING_DEST_UNREACHABLE;
+		}
+	} else if (PING_ERR_DEST_UNREACH == u8ErrorCode) {
+		WiFi._resolve = WL_PING_DEST_UNREACHABLE;
+	} else if (PING_ERR_TIMEOUT == u8ErrorCode) {
+		WiFi._resolve = WL_PING_TIMEOUT;
+	} else {
+		WiFi._resolve = WL_PING_ERROR;
+	}
 }
 
 WiFiClass::WiFiClass()
@@ -162,6 +188,14 @@ WiFiClass::WiFiClass()
 	_mode = WL_RESET_MODE;
 	_status = WL_NO_SHIELD;
 	_init = 0;
+}
+
+void WiFiClass::setPins(int8_t cs, int8_t irq, int8_t rst, int8_t en)
+{
+	gi8Winc1501CsPin = cs;
+	gi8Winc1501IntnPin = irq;
+	gi8Winc1501ResetPin = rst;
+	gi8Winc1501ChipEnPin = en;
 }
 
 int WiFiClass::init()
@@ -173,7 +207,7 @@ int WiFiClass::init()
 	nm_bsp_init();
 
 	// Initialize WiFi module and register status callback:
-	param.pfAppWifiCb = wifi_cb;
+	param.pfAppWifiCb = WiFiClass::wifi_cb;
 	ret = m2m_wifi_init(&param);
 	if (M2M_SUCCESS != ret) {
 		// Error led ON (rev A then rev B).
@@ -185,14 +219,13 @@ int WiFiClass::init()
 	// Initialize socket API and register socket callback:
 	socketInit();
 	socketBufferInit();
-	registerSocketCallback(socketBufferCb, resolve_cb);
+	registerSocketCallback(socketBufferCb, WiFiClass::resolve_cb);
 	_init = 1;
 	_status = WL_IDLE_STATUS;
 	_localip = 0;
 	_submask = 0;
 	_gateway = 0;
 	_dhcp = 1;
-	memset(_client, 0, sizeof(WiFiClient *) * TCP_SOCK_MAX);
 
 	// Initialize IO expander LED control (rev A then rev B)..
 	m2m_periph_gpio_set_val(M2M_PERIPH_GPIO15, 1);
@@ -300,7 +333,7 @@ uint8_t WiFiClass::startConnect(const char *ssid, uint8_t u8SecType, const void 
 		_submask = 0;
 		_gateway = 0;
 	}
-	if (m2m_wifi_connect((char *)ssid, strlen(ssid), u8SecType, (void *)pvAuthInfo, M2M_WIFI_CH_ALL) < 0) {
+	if (m2m_wifi_connect(ssid, strlen(ssid), u8SecType, pvAuthInfo, M2M_WIFI_CH_ALL) < 0) {
 		_status = WL_CONNECT_FAILED;
 		return _status;
 	}
@@ -323,12 +356,12 @@ uint8_t WiFiClass::startConnect(const char *ssid, uint8_t u8SecType, const void 
 	return _status;
 }
 
-uint8_t WiFiClass::beginAP(char *ssid)
+uint8_t WiFiClass::beginAP(const char *ssid)
 {
 	return beginAP(ssid, 1);
 }
 
-uint8_t WiFiClass::beginAP(char *ssid, uint8_t channel)
+uint8_t WiFiClass::beginAP(const char *ssid, uint8_t channel)
 {
 	return startAP(ssid, M2M_WIFI_SEC_OPEN, NULL, channel);
 }
@@ -385,10 +418,10 @@ uint8_t WiFiClass::startAP(const char *ssid, uint8_t u8SecType, const void *pvAu
 	}
 
 	if (m2m_wifi_enable_ap(&strM2MAPConfig) < 0) {
-		_status = WL_CONNECT_FAILED;
+		_status = WL_AP_FAILED;
 		return _status;
 	}
-	_status = WL_CONNECTED;
+	_status = WL_AP_LISTENING;
 	_mode = WL_AP_MODE;
 
 	memset(_ssid, 0, M2M_MAX_SSID_LEN);
@@ -502,10 +535,30 @@ void WiFiClass::disconnect()
 	m2m_periph_gpio_set_val(M2M_PERIPH_GPIO4, 1);
 }
 
+void WiFiClass::end()
+{
+	if (_mode == WL_AP_MODE) {
+		m2m_wifi_disable_ap();
+
+		_status = WL_IDLE_STATUS;
+		_mode = WL_RESET_MODE;
+	} else {
+		if (_mode == WL_PROV_MODE) {
+			m2m_wifi_stop_provision_mode();
+		}
+
+		m2m_wifi_disconnect();
+	}
+
+	// WiFi led OFF (rev A then rev B).
+	m2m_periph_gpio_set_val(M2M_PERIPH_GPIO15, 1);
+	m2m_periph_gpio_set_val(M2M_PERIPH_GPIO4, 1);
+}
+
 uint8_t *WiFiClass::macAddress(uint8_t *mac)
 {
 	m2m_wifi_get_mac_address(mac);
-	uint8 tmpMac[6], i;
+	byte tmpMac[6], i;
 	
 	m2m_wifi_get_mac_address(tmpMac);
 	
@@ -532,7 +585,7 @@ uint32_t WiFiClass::gatewayIP()
 
 char* WiFiClass::SSID()
 {
-	if (_status == WL_CONNECTED) {
+	if (_status == WL_CONNECTED || _status == WL_AP_LISTENING || _status == WL_AP_CONNECTED) {
 		return _ssid;
 	}
 	else {
@@ -686,75 +739,11 @@ uint8_t WiFiClass::status()
 	return _status;
 }
 
-int WiFiClass::inet_aton(const char* aIPAddrString, IPAddress& aResult)
-{
-    // See if we've been given a valid IP address
-    const char* p =aIPAddrString;
-    while (*p &&
-           ( (*p == '.') || (*p >= '0') || (*p <= '9') ))
-    {
-        p++;
-    }
-
-    if (*p == '\0')
-    {
-        // It's looking promising, we haven't found any invalid characters
-        p = aIPAddrString;
-        int segment =0;
-        int segmentValue =0;
-        while (*p && (segment < 4))
-        {
-            if (*p == '.')
-            {
-                // We've reached the end of a segment
-                if (segmentValue > 255)
-                {
-                    // You can't have IP address segments that don't fit in a byte
-                    return 0;
-                }
-                else
-                {
-                    aResult[segment] = (byte)segmentValue;
-                    segment++;
-                    segmentValue = 0;
-                }
-            }
-            else
-            {
-                // Next digit
-                segmentValue = (segmentValue*10)+(*p - '0');
-            }
-            p++;
-        }
-        // We've reached the end of address, but there'll still be the last
-        // segment to deal with
-        if ((segmentValue > 255) || (segment > 3))
-        {
-            // You can't have IP address segments that don't fit in a byte,
-            // or more than four segments
-            return 0;
-        }
-        else
-        {
-            aResult[segment] = (byte)segmentValue;
-            return 1;
-        }
-    }
-    else
-    {
-        return 0;
-    }
-}
-
-int WiFiClass::_gethostbyname(const char* aHostname, in_addr_t aResult){
-	return hostByName(aHostname, (IPAddress&)aResult);
-}
-
 int WiFiClass::hostByName(const char* aHostname, IPAddress& aResult)
 {
 	
 	// check if aHostname is already an ipaddress
-	if (inet_aton(aHostname, aResult)) {
+	if (aResult.fromString(aHostname)) {
 		// if fromString returns true we have an IP address ready 
 		return 1;
 
@@ -795,6 +784,71 @@ void WiFiClass::refresh(void)
 {
 	// Update state machine:
 	m2m_wifi_handle_events(NULL);
+}
+
+void WiFiClass::lowPowerMode(void)
+{
+	m2m_wifi_set_sleep_mode(M2M_PS_H_AUTOMATIC, true);
+}
+
+void WiFiClass::maxLowPowerMode(void)
+{
+	m2m_wifi_set_sleep_mode(M2M_PS_DEEP_AUTOMATIC, true);
+}
+
+void WiFiClass::noLowPowerMode(void)
+{
+	m2m_wifi_set_sleep_mode(M2M_NO_PS, false);
+}
+
+uint8_t WiFiClass::ping(const char* hostname, uint8_t ttl)
+{
+	IPAddress ip;
+
+	if (hostByName(hostname, ip) > 0) {
+		return ping(ip, ttl);
+	} else {
+		return WL_PING_UNKNOWN_HOST;
+	}
+}
+
+uint8_t WiFiClass::ping(const String &hostname, uint8_t ttl)
+{
+	return ping(hostname.c_str(), ttl);
+}
+
+uint8_t WiFiClass::ping(IPAddress host, uint8_t ttl)
+{
+	// Network led ON (rev A then rev B).
+	m2m_periph_gpio_set_val(M2M_PERIPH_GPIO16, 0);
+	m2m_periph_gpio_set_val(M2M_PERIPH_GPIO5, 0);
+
+	uint32_t dstHost = (uint32_t)host;
+	_resolve = dstHost;
+
+	if (m2m_ping_req((uint32_t)host, ttl, &WiFiClass::ping_cb) < 0) {
+		// Network led OFF (rev A then rev B).
+		m2m_periph_gpio_set_val(M2M_PERIPH_GPIO16, 1);
+		m2m_periph_gpio_set_val(M2M_PERIPH_GPIO5, 1);
+		//  Error sending ping request
+		return WL_PING_ERROR;
+	}
+
+	// Wait for success or timeout:
+	unsigned long start = millis();
+	while (_resolve == dstHost && millis() - start < 5000) {
+		m2m_wifi_handle_events(NULL);
+	}
+
+	// Network led OFF (rev A then rev B).
+	m2m_periph_gpio_set_val(M2M_PERIPH_GPIO16, 1);
+	m2m_periph_gpio_set_val(M2M_PERIPH_GPIO5, 1);
+
+	if (_resolve == dstHost) {
+		return WL_PING_TIMEOUT;
+	} else {
+		return _resolve;
+	}
 }
 
 WiFiClass WiFi;

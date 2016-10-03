@@ -86,7 +86,7 @@ all: nxp_contest.elf secondary-outputs
 nxp_contest.elf: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: Cross ARM C++ Linker'
-	arm-none-eabi-g++ -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -O0 -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections -Wall  -g3 -T ../MK82FN256xxx15_flash.ld -Xlinker --gc-sections -L/home/chroots/arm-devel/usr/local/lib/lib/ -L/home/mhanuel/Devel/Networking/ArduinoJson/lib -Wl,-Map,"nxp_contest.map" -specs=nosys.specs -specs=nano.specs -Xlinker -z -Xlinker muldefs -Xlinker -defsym=__heap_size__=0x2000 -Xlinker -defsym=__stack_size__=0x2000 -o "nxp_contest.elf" $(OBJS) $(USER_OBJS) $(LIBS)
+	arm-none-eabi-g++ -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -O0 -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections -Wall  -g3 -T ../MK82FN256xxx15_flash.ld -Xlinker --gc-sections -L/home/chroots/arm-devel/usr/local/lib/lib/ -L/home/mhanuel/Devel/Networking/ArduinoJson/lib -Wl,-Map,"nxp_contest.map" -specs=nosys.specs -specs=nano.specs -Xlinker -z -Xlinker muldefs -Xlinker -defsym=__heap_size__=0x8000 -Xlinker -defsym=__stack_size__=0x8000 -o "nxp_contest.elf" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 

@@ -427,7 +427,7 @@ void FirmataClass::sendDigital(byte pin, int value)
   // digital message for each change.
 
   //    if(value == 0)
-  //        sendDigitalPortPair();
+//          sendDigitalPortPair();
 }
 
 
@@ -453,6 +453,34 @@ void FirmataClass::sendDigitalPort(byte portNumber, int portData)
  * @param bytec The number of data bytes in the message (excludes start, command and end bytes).
  * @param bytev A pointer to the array of data bytes to send in the message.
  */
+
+
+void FirmataClass::sendSetDigitalPinValue(byte pin, int value){
+	FirmataStream->write(SET_DIGITAL_PIN_VALUE);
+	FirmataStream->write(pin);
+	FirmataStream->write(value);
+}
+
+
+void FirmataClass::sendSetPinMode(byte pin, int mode){
+	FirmataStream->write(SET_PIN_MODE);
+	FirmataStream->write(pin);
+	FirmataStream->write(mode);
+}
+
+
+void FirmataClass::sendQueryFirmware(void){
+	startSysex();
+	FirmataStream->write(REPORT_FIRMWARE);
+	endSysex();
+}
+
+
+void FirmataClass::recvFwNameVer(void){
+	unsigned char recv = FirmataStream->read();
+	Serial.println(recv, 16);
+}
+
 void FirmataClass::sendSysex(byte command, byte bytec, byte *bytev)
 {
   byte i;

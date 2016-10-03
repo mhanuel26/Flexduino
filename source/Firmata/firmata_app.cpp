@@ -7,13 +7,23 @@
 #include "WiFiClientStream.h"
 #include "firmataDebug.h"
 
+#define D0		0b00000001
+#define D1		0b00000010
+#define D2		0b00000100
+#define D3		0b00001000
+#define D4		0b00010000
+#define	D5		0b00100000
+#define	D6		0b01000000
+
+#define PORT0	0
+
 extern SerialConsole Serial;
 
 // Test with our Linux Host
 //IPAddress server_ip(192, 168, 1, 5);
-//uint16_t port = 5000;
+//uint16_t port #define D7		0b10000000= 5000;
 // Test with ESP12
-IPAddress server_ip(192, 168, 1, 70);
+IPAddress server_ip(192, 168, 1, 75);
 static uint16_t port = 3030;
 
 WiFiClientStream stream(server_ip, port);
@@ -147,8 +157,12 @@ void firmataApp::setup(void){
 	// Initialize Firmata to use the WiFi stream object as the transport.
 	Firmata.begin(stream);
 	_start = millis();
+	_state = 0;
+	Firmata.sendSetPinMode(D2 >> 1, OUTPUT);
+//	Firmata.sendQueryFirmware();
 //	systemResetCallback();  // reset to default config
 }
+
 
 void firmataApp::process(void){
 	while (Firmata.available()) {
@@ -156,9 +170,11 @@ void firmataApp::process(void){
 	}
 	stream.maintain();
 
-	if((millis() - _start) > 3000){
-		Firmata.sendString("test");
+	if((millis() - _start) > 1000){
+		Serial.println("toggle LED test");
+		Firmata.sendDigitalPort(PORT0, _state);
 		_start = millis();
+		_state ^= D2;
 	}
 
 }

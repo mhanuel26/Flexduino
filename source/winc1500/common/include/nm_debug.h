@@ -60,7 +60,7 @@
 #if (defined __APS3_CORTUS__)
 #define M2M_LOG_LEVEL									M2M_LOG_ERROR
 #else
-#define M2M_LOG_LEVEL									M2M_LOG_DBG	//M2M_LOG_REQ	//M2M_LOG_DBG
+#define M2M_LOG_LEVEL									M2M_LOG_REQ	//M2M_LOG_DBG
 #endif
 
 

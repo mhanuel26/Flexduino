@@ -8,8 +8,10 @@ source/winc1500/IPAddress.o: ../source/winc1500/IPAddress.cpp \
  ../startup/system_MK82F25615.h ../CMSIS/MK82F25615_features.h \
  ../drivers/fsl_clock.h ../utilities/fsl_debug_console.h \
  ../drivers/fsl_common.h ../source/winc1500/IPAddress.h \
- ../source/winc1500/Printable.h ../source/winc1500/Print.h \
- ../source/winc1500/WString.h ../source/winc1500/Printable.h
+ ../source/winc1500/Printable.h ../source/winc1500/Stream.h \
+ ../source/winc1500/Arduino.h ../source/winc1500/Print.h \
+ ../source/winc1500/WString.h ../source/winc1500/Printable.h \
+ ../source/winc1500/Print.h
 
 ../source/winc1500/Arduino.h:
 
@@ -51,8 +53,14 @@ source/winc1500/IPAddress.o: ../source/winc1500/IPAddress.cpp \
 
 ../source/winc1500/Printable.h:
 
+../source/winc1500/Stream.h:
+
+../source/winc1500/Arduino.h:
+
 ../source/winc1500/Print.h:
 
 ../source/winc1500/WString.h:
 
 ../source/winc1500/Printable.h:
+
+../source/winc1500/Print.h:

@@ -93,8 +93,8 @@
 #define SYSEX_SAMPLING_INTERVAL 0x7A // same as SAMPLING_INTERVAL
 
 // pin modes
-//#define INPUT                 0x00 // defined in Arduino.h
-//#define OUTPUT                0x01 // defined in Arduino.h
+#define INPUT                 0x00 // defined in Arduino.h		// Add there for Flexduino ...
+#define OUTPUT                0x01 // defined in Arduino.h
 #define PIN_MODE_ANALOG         0x02 // analog pin in analogInput mode
 #define PIN_MODE_PWM            0x03 // digital pin in PWM output mode
 #define PIN_MODE_SERVO          0x04 // digital pin in Servo output mode
@@ -173,6 +173,12 @@ class FirmataClass
     void sendValueAsTwo7bitBytes(int value);
     void startSysex(void);
     void endSysex(void);
+
+    // added
+    void sendSetDigitalPinValue(byte pin, int value);
+    void sendSetPinMode(byte pin, int mode);
+    void recvFwNameVer(void);
+    void sendQueryFirmware(void);
 
   private:
     Stream *FirmataStream;
