@@ -6,6 +6,11 @@
 #define WIFI_101
 #endif
 
+#define SERVER_PORT		3030
+
+#define OFF	false
+#define ON	true
+
 #include "Firmata.h"
 
 extern char ssid[];
@@ -22,6 +27,7 @@ public:
 	void hostConnectionCallback(byte state);
 	void initTransport(void);
 	void stringCallback(char *myString);
+	void setSmartLight(bool state);
 private:
 	char *_ssid;   // your network SSID (name)
 	char *_pass;   // your network password

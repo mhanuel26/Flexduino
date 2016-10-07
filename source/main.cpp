@@ -390,7 +390,7 @@ int main(void) {
 //		if(camera.videomode() == single_capture){
 //			// handle single capture to RAM buffer
 //			if(camera.shotdone() == true){
-//				// this wil be poll mode ...
+//				// this will be poll mode ...
 //			}
 //		}
 		camera.process();			// keep an eye for  image capture completeness.
@@ -451,12 +451,13 @@ int main(void) {
 #if (ARTIK_CONN_PROTOCOL == ARTIK_USE_WEBSOCK_CLIENT)
 	// webSockets client loop
 	webSockClient.loop();
-	if(millis() - start >= ARTIK_REFRESH_PERIOD){
-		start = millis();
-		Serial.println("Send status to Artik Cloud");
-		Flexartik.send_status(status);
-		status ^= true;
-	}
+	// test sending status every 10 minutes
+//	if(millis() - start >= ARTIK_REFRESH_PERIOD){
+//		start = millis();
+//		Serial.println("Send status to Artik Cloud");
+//		Flexartik.send_status(status);
+//		status ^= true;
+//	}
 #endif
 #if ARTIK_REST_CLIENT_4_TEST
     if (!client.connected()) {

@@ -356,23 +356,24 @@ void FirmataClass::parse(byte inputData)
       case DIGITAL_MESSAGE:
       case SET_PIN_MODE:
       case SET_DIGITAL_PIN_VALUE:
-        waitForData = 2; // two data bytes needed
-        executeMultiByteCommand = command;
-        break;
+    	  waitForData = 2; // two data bytes needed
+    	  executeMultiByteCommand = command;
+    	  break;
       case REPORT_ANALOG:
       case REPORT_DIGITAL:
-        waitForData = 1; // one data byte needed
-        executeMultiByteCommand = command;
-        break;
+    	  waitForData = 1; // one data byte needed
+    	  executeMultiByteCommand = command;
+    	  break;
       case START_SYSEX:
-        parsingSysex = true;
-        sysexBytesRead = 0;
+    	  parsingSysex = true;
+    	  sysexBytesRead = 0;
         break;
       case SYSTEM_RESET:
-        systemReset();
-        break;
+    	  systemReset();
+    	  break;
       case REPORT_VERSION:
-        Firmata.printVersion();
+		  printVersion();
+//        Firmata.printVersion();
         break;
     }
   }
@@ -701,5 +702,5 @@ void FirmataClass::strobeBlinkPin(byte pin, int count, int onInterval, int offIn
 //  }
 }
 
-// make one instance for the user to use
-FirmataClass Firmata;
+//// make one instance for the user to use
+//FirmataClass Firmata;

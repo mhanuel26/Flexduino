@@ -5,7 +5,9 @@
 #include "Serial.h"
 #include "WiFiStream.h"
 #include "WiFiClientStream.h"
+#include "WiFiServerStream.h"
 #include "firmataDebug.h"
+
 
 #define D0		0b00000001
 #define D1		0b00000010
@@ -23,10 +25,15 @@ extern SerialConsole Serial;
 //IPAddress server_ip(192, 168, 1, 5);
 //uint16_t port #define D7		0b10000000= 5000;
 // Test with ESP12
-IPAddress server_ip(192, 168, 1, 75);
-static uint16_t port = 3030;
+IPAddress server_ip(192, 168, 1, 70);
+//IPAddress server_ip2(192, 168, 1, 75);
+//static uint16_t port = 3030;
 
-WiFiClientStream stream(server_ip, port);
+WiFiClientStream stream(server_ip, SERVER_PORT);
+//WiFiClientStream stream2(server_ip2, SERVER_PORT);
+
+FirmataClass Firmata;
+//FirmataClass Firmata2;
 
 static void hostConnectionCb(byte state){
 	firmApp.hostConnectionCallback(state);
@@ -135,6 +142,9 @@ void firmataApp::initTransport(void)
   printWifiStatus();
 }
 
+
+
+
 void firmataApp::setup(void){
 //	Firmata.setFirmwareVersion(FIRMATA_FIRMWARE_MAJOR_VERSION, FIRMATA_FIRMWARE_MINOR_VERSION);
 //	Firmata.attach(STRING_DATA, stringCallback);
@@ -156,11 +166,19 @@ void firmataApp::setup(void){
 
 	// Initialize Firmata to use the WiFi stream object as the transport.
 	Firmata.begin(stream);
+
 	_start = millis();
 	_state = 0;
 	Firmata.sendSetPinMode(D2 >> 1, OUTPUT);
+	setSmartLight(OFF);
 //	Firmata.sendQueryFirmware();
 //	systemResetCallback();  // reset to default config
+}
+
+void firmataApp::setSmartLight(bool state){
+	Serial.println("toggle Smart LED");
+	state ? _state = D2 : _state &= !D2;
+	Firmata.sendDigitalPort(PORT0, _state);
 }
 
 
@@ -170,12 +188,13 @@ void firmataApp::process(void){
 	}
 	stream.maintain();
 
-	if((millis() - _start) > 1000){
-		Serial.println("toggle LED test");
-		Firmata.sendDigitalPort(PORT0, _state);
-		_start = millis();
-		_state ^= D2;
-	}
+	// just for tests
+//	if((millis() - _start) > 1000){
+//		Serial.println("toggle LED test");
+//		Firmata.sendDigitalPort(PORT0, _state);
+//		_start = millis();
+//		_state ^= D2;
+//	}
 
 }
 

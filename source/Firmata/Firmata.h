@@ -216,7 +216,7 @@ class FirmataClass
     void strobeBlinkPin(byte pin, int count, int onInterval, int offInterval);
 };
 
-extern FirmataClass Firmata;
+//extern FirmataClass Firmata;
 
 /*==============================================================================
  * MACROS

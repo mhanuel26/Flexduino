@@ -39,14 +39,13 @@ source/main.o: ../source/main.cpp ../drivers/fsl_port.h \
  ../source/WebSockets/WebSocketsServer.h \
  ../source/WebSockets/WebSockets.h ../source/artik_cloud/artik.h \
  ../source/main.h ../source/WebSockets/WebSocketsClient.h \
- ../source/artik_cloud/parse_utils.h ../source/artik_cloud/mm_iot.h \
- ../source/winc1500/WiFiSSLClient.h ../source/winc1500/WiFiClient.h \
- ../source/cameraLib/camera.h ../source/audioLib/AudioFlex.h \
- ../source/audioLib/audio_dma.h ../source/audioLib/pdm2pcm.h \
- ../drivers/fsl_edma.h \
- ../source/winc1500_firmware_updater/firmware_updater.h \
- ../source/Firmata/firmata_app.h ../source/Firmata/Firmata.h \
- ../source/Firmata/Boards.h
+ ../source/artik_cloud/parse_utils.h ../source/Firmata/firmata_app.h \
+ ../source/Firmata/Firmata.h ../source/Firmata/Boards.h \
+ ../source/artik_cloud/mm_iot.h ../source/winc1500/WiFiSSLClient.h \
+ ../source/winc1500/WiFiClient.h ../source/cameraLib/camera.h \
+ ../source/audioLib/AudioFlex.h ../source/audioLib/audio_dma.h \
+ ../source/audioLib/pdm2pcm.h ../drivers/fsl_edma.h \
+ ../source/winc1500_firmware_updater/firmware_updater.h
 
 ../drivers/fsl_port.h:
 
@@ -200,6 +199,12 @@ source/main.o: ../source/main.cpp ../drivers/fsl_port.h \
 
 ../source/artik_cloud/parse_utils.h:
 
+../source/Firmata/firmata_app.h:
+
+../source/Firmata/Firmata.h:
+
+../source/Firmata/Boards.h:
+
 ../source/artik_cloud/mm_iot.h:
 
 ../source/winc1500/WiFiSSLClient.h:
@@ -217,9 +222,3 @@ source/main.o: ../source/main.cpp ../drivers/fsl_port.h \
 ../drivers/fsl_edma.h:
 
 ../source/winc1500_firmware_updater/firmware_updater.h:
-
-../source/Firmata/firmata_app.h:
-
-../source/Firmata/Firmata.h:
-
-../source/Firmata/Boards.h:
