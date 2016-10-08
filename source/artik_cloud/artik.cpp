@@ -46,6 +46,50 @@ artikLand::artikLand(void){
 #endif
 }
 
+// build a more complex nested one level json group response with parameter list
+
+int artikLand::build_group_params_msg(String groupName, String param[], void* value[], dtype type[], int numParams){
+	using namespace ArduinoJson;
+	StaticJsonBuffer<500> jsonBuffer; 				// reserve spot in memory
+
+	JsonObject& root = jsonBuffer.createObject(); // create root objects
+	root["sdid"] = device_id.c_str() ;
+#if (ARTIK_CONN_PROTOCOL == ARTIK_USE_WEBSOCK_CLIENT)
+	root["cid"] = "1234567890";
+#endif
+	root["type"] = "message";
+
+	JsonObject& groupObj = root.createNestedObject("data");
+
+	JsonObject& dataPair = groupObj.createNestedObject(groupName.c_str()); 	// create nested objects
+	for(int j=0; j<numParams; j++){
+		switch(type[j]){
+			case Boolean:
+				dataPair[param[j].c_str()] = *(bool*)value[j];
+				break;
+			case Double:
+				dataPair[param[j].c_str()] = *(double*)value[j];
+				break;
+			case Integer:
+				dataPair[param[j].c_str()] = *(int*)value[j];
+				break;
+			case Long:
+				dataPair[param[j].c_str()] = *(long*)value[j];
+				break;
+			case Strng:
+				dataPair[param[j].c_str()] = (const char*)value[j];
+				break;
+		}
+	}
+	memset(_buf, 0, sizeof(_buf));
+	root.printTo(_buf, sizeof(_buf)); // JSON-print to buffer
+	Serial.println();
+	Serial.println();
+	Serial.println(_buf);
+	Serial.println();
+	return (root.measureLength()); // also return length
+}
+
 // build a simple one nested json group response... sounds fancy...
 
 int artikLand::build_group_msg(String groupName, String param, void* value, dtype type){
@@ -146,13 +190,28 @@ void artikLand::toggleLED(uint8_t state){
 	send_request(len);
 }
 
-void artikLand::handleSmartLightAction(bool state){
+void artikLand::handleSmartLightAction(int ioNum, bool state){
 	int len;
-	Serial.print("set SmartLight state to ");
+	int pin = 1 << ioNum;
+	String params[2];
+	params[0] = String(STATE);
+	params[1] = String(IO_NUM);
+	void *values[2];
+	values[0] = &state;
+	values[1] = &ioNum;
+	dtype type[2];
+	type[0] = Boolean;
+	type[1] = Integer;
+
+	Serial.print("set SmartLight ");
+	Serial.print("pin ");
+	Serial.print(pin, BIN);
+	Serial.print(" state to ");
 	state ? Serial.println("ON") : Serial.println("OFF");
-	setSmartLight(state);
+	setDigitalPin(pin, state);
+
 	// now I should build a more complex response for the SmartLight state back to artik
-	len = build_group_msg(SMART_LIGHT, STATE, &state);
+	len = build_group_params_msg(SMART_LIGHT, params, values, type, 2);
 	send_request(len);
 }
 
@@ -189,7 +248,8 @@ void  artikLand::process_incoming_msg(uint8_t *msg){
 				Serial.println("set parameter on a Smart Light appliance");
 				JsonObject& param = actions[0]["parameters"];
 				bool OnState = param["OnState"].as<bool>();
-				handleSmartLightAction(OnState);
+				int ioNum = param["ioNum"].as<int>();
+				handleSmartLightAction(ioNum, OnState);
 			}else{
 				return;
 			}

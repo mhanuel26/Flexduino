@@ -21,6 +21,12 @@
 
 extern SerialConsole Serial;
 
+bool firmataApp::_init_done = false;
+char * firmataApp::_ssid;   // your network SSID (name)
+char * firmataApp::_pass;   // your network password
+
+#define DEBUG_FIRMATA	1
+
 // Test with our Linux Host
 //IPAddress server_ip(192, 168, 1, 5);
 //uint16_t port #define D7		0b10000000= 5000;
@@ -32,8 +38,20 @@ IPAddress server_ip(192, 168, 1, 70);
 WiFiClientStream stream(server_ip, SERVER_PORT);
 //WiFiClientStream stream2(server_ip2, SERVER_PORT);
 
-FirmataClass Firmata;
+//FirmataClass Firmata;
 //FirmataClass Firmata2;
+
+
+void digitalWriteCallback(byte port, int value){
+#if DEBUG_FIRMATA
+	Serial.print("port = ");
+	Serial.println(port, BIN);
+	Serial.print("value = ");
+	Serial.println(value, BIN);
+#endif
+	// now the handler
+
+}
 
 static void hostConnectionCb(byte state){
 	firmApp.hostConnectionCallback(state);
@@ -44,6 +62,10 @@ static void sysexCb(byte command, byte argc, byte *argv){
 	firmApp.sysexCallback(command, argc, argv);
 }
 
+firmataApp::firmataApp(char *ssid, char *pass){
+	_ssid = ssid;
+	_pass = pass;
+}
 
 void firmataApp::stringCallback(char *myString)
 {
@@ -88,58 +110,61 @@ void firmataApp::hostConnectionCallback(byte state)
 
 void firmataApp::initTransport(void)
 {
-  // This statement will clarify how a connection is being made
-  DEBUG_PRINT( "StandardFirmataWiFi will attempt a WiFi connection " );
+	if(!_init_done){
+		// This statement will clarify how a connection is being made
+		DEBUG_PRINT( "StandardFirmataWiFi will attempt a WiFi connection " );
 #if defined(WIFI_101)
-  DEBUG_PRINTLN( "using the WiFi 101 library." );
+		DEBUG_PRINTLN( "using the WiFi 101 library." );
 #elif defined(ARDUINO_WIFI_SHIELD)
-  DEBUG_PRINTLN( "using the legacy WiFi library." );
+		DEBUG_PRINTLN( "using the legacy WiFi library." );
 #elif defined(ESP8266_WIFI)
-  DEBUG_PRINTLN( "using the ESP8266 WiFi library." );
+		DEBUG_PRINTLN( "using the ESP8266 WiFi library." );
 #elif defined(HUZZAH_WIFI)
-  DEBUG_PRINTLN( "using the HUZZAH WiFi library." );
-  //else should never happen here as error-checking in wifiConfig.h will catch this
+		DEBUG_PRINTLN( "using the HUZZAH WiFi library." );
+		//else should never happen here as error-checking in wifiConfig.h will catch this
 #endif  //defined(WIFI_101)
 
-  // Configure WiFi IP Address
+		// Configure WiFi IP Address
 #ifdef STATIC_IP_ADDRESS
-  DEBUG_PRINT( "Using static IP: " );
-  DEBUG_PRINTLN( local_ip );
+		DEBUG_PRINT( "Using static IP: " );
+		DEBUG_PRINTLN( local_ip );
 #if defined(ESP8266_WIFI) || (defined(SUBNET_MASK) && defined(GATEWAY_IP_ADDRESS))
-  stream.config( local_ip , gateway, subnet );
+		stream.config( local_ip , gateway, subnet );
 #else
-  // you can also provide a static IP in the begin() functions, but this simplifies
-  // ifdef logic in this sketch due to support for all different encryption types.
-  stream.config( local_ip );
+		// you can also provide a static IP in the begin() functions, but this simplifies
+		// ifdef logic in this sketch due to support for all different encryption types.
+		stream.config( local_ip );
 #endif
 #else
-  DEBUG_PRINTLN( "IP will be requested from DHCP ..." );
+		DEBUG_PRINTLN( "IP will be requested from DHCP ..." );
 #endif
 
-  stream.attach(hostConnectionCb);
+		stream.attach(hostConnectionCb);
 
-  // Configure WiFi security and initiate WiFi connection
+		// Configure WiFi security and initiate WiFi connection
 #if defined(WIFI_WEP_SECURITY)
-  DEBUG_PRINT( "Attempting to connect to WEP SSID: " );
-  DEBUG_PRINTLN(ssid);
-  stream.begin(ssid, wep_index, wep_key);
+		DEBUG_PRINT( "Attempting to connect to WEP SSID: " );
+		DEBUG_PRINTLN(ssid);
+		stream.begin(ssid, wep_index, wep_key);
 #elif defined(WIFI_WPA_SECURITY)
-  DEBUG_PRINT( "Attempting to connect to WPA SSID: " );
-  DEBUG_PRINTLN(ssid);
-  stream.begin(ssid, wpa_passphrase);
+		DEBUG_PRINT( "Attempting to connect to WPA SSID: " );
+		DEBUG_PRINTLN(ssid);
+		stream.begin(ssid, wpa_passphrase);
 #else                          //OPEN network
-  DEBUG_PRINTLN( "Attempting to connect to open SSID: " );
-  DEBUG_PRINTLN(_ssid);
-  stream.begin(_ssid, _pass);
+		DEBUG_PRINTLN( "Attempting to connect to open SSID: " );
+		DEBUG_PRINTLN(_ssid);
+		stream.begin(_ssid, _pass);
 #endif //defined(WIFI_WEP_SECURITY)
-  DEBUG_PRINTLN( "WiFi setup done - Wait for connection to AP" );
+		DEBUG_PRINTLN( "WiFi setup done - Wait for connection to AP" );
 
-  // Wait for connection to access point to be established.
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    DEBUG_PRINT(".");
-  }
-  printWifiStatus();
+		// Wait for connection to access point to be established.
+		while (WiFi.status() != WL_CONNECTED) {
+		delay(500);
+		DEBUG_PRINT(".");
+		}
+		printWifiStatus();
+		_init_done = true;			// we can only init wifi network once
+	}
 }
 
 
@@ -154,31 +179,31 @@ void firmataApp::setup(void){
 
 	Firmata.setFirmwareVersion(FIRMATA_FIRMWARE_MAJOR_VERSION, FIRMATA_FIRMWARE_MINOR_VERSION);
 //	Firmata.attach(ANALOG_MESSAGE, analogWriteCallback);
-//	Firmata.attach(DIGITAL_MESSAGE, digitalWriteCallback);
+	Firmata.attach(DIGITAL_MESSAGE, digitalWriteCallback);
 //	Firmata.attach(REPORT_ANALOG, reportAnalogCallback);
 //	Firmata.attach(REPORT_DIGITAL, reportDigitalCallback);
 //	Firmata.attach(SET_PIN_MODE, setPinModeCallback);
 //	Firmata.attach(SET_DIGITAL_PIN_VALUE, setPinValueCallback);
-	Firmata.attach(START_SYSEX, sysexCb);
+//	Firmata.attach(START_SYSEX, sysexCb);
 //	Firmata.attach(SYSTEM_RESET, systemResetCallback);
 
 //	ignorePins();
 
 	// Initialize Firmata to use the WiFi stream object as the transport.
 	Firmata.begin(stream);
+	delay(1000);				// For some reason, perhaps winc1500, if I continue without this delay, packets wont send out for a second
 
 	_start = millis();
+	_init = 0;
+	_retry = 0;
 	_state = 0;
-	Firmata.sendSetPinMode(D2 >> 1, OUTPUT);
-	setSmartLight(OFF);
+//	Firmata.sendSetPinMode(2, OUTPUT);
+//	Firmata.sendSetPinMode(4, INPUT);
+//	Firmata.reportDigitalPin(4, 1);
+//	setSmartLight(OFF);
+//	Serial.println("setup firmata");
 //	Firmata.sendQueryFirmware();
 //	systemResetCallback();  // reset to default config
-}
-
-void firmataApp::setSmartLight(bool state){
-	Serial.println("toggle Smart LED");
-	state ? _state = D2 : _state &= !D2;
-	Firmata.sendDigitalPort(PORT0, _state);
 }
 
 
@@ -188,7 +213,22 @@ void firmataApp::process(void){
 	}
 	stream.maintain();
 
-	// just for tests
+	if(!_init){
+		Serial.println("sent report digital command");
+		bool res = Firmata.sendSetPinMode(4, INPUT);
+		if(res){
+			_init = 1;
+			Firmata.sendSetPinMode(2, OUTPUT);
+			Serial.print("number of retries = ");
+			Serial.println(_retry);
+			Firmata.reportDigitalPin(4, 1);
+			setDigitalPin(D2, OFF);
+		}else{
+			_retry++;
+		}
+	}
+
+//////	 just for tests
 //	if((millis() - _start) > 1000){
 //		Serial.println("toggle LED test");
 //		Firmata.sendDigitalPort(PORT0, _state);
@@ -198,6 +238,26 @@ void firmataApp::process(void){
 
 }
 
+
+
+// espNode class
+
+bool espNode::isPinOutputInv(int pin){
+	byte lport = (byte)(pin & 0x7f);
+	if(lport && D2)
+		return true;
+	return false;
+}
+
+void espNode::setDigitalPin(int pin, bool value){
+	if(isPinOutputInv(pin))
+		value ? _state &= ~pin : _state |= pin;
+	else
+		value ? _state |= pin : _state &= ~pin;
+	Serial.print("Set Digital Pin ");
+	Serial.println(_state, BIN);
+	Firmata.sendDigitalPort(PORT0, _state);
+}
 
 
 

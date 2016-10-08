@@ -17,22 +17,44 @@ extern char ssid[];
 extern char pass[];
 extern void printWifiStatus(void);
 
-class firmataApp{
+extern "C" {
+// callback function types
+typedef void (*appCallbackFunction)(bool);
+}
+
+
+class espNode {
+public:
+	void appSetDigitalPinCb(byte pin, appCallbackFunction appCb);
+	void setDigitalPin(int pin, bool state);
+	bool isPinOutputInv(int pin);
+protected:
+	int _state = 0;
+	appCallbackFunction		_digitalPinCb[6];
+
+};
+
+
+class firmataApp : public espNode {
 public:
 	inline firmataApp(){ };
-	inline firmataApp(char *ssid, char *pass){ _ssid = ssid; _pass = pass;};
+	firmataApp(char *ssid, char *pass);
 	void setup(void);
 	void process(void);
 	void sysexCallback(byte command, byte argc, byte *argv);
 	void hostConnectionCallback(byte state);
 	void initTransport(void);
 	void stringCallback(char *myString);
-	void setSmartLight(bool state);
+
+
 private:
-	char *_ssid;   // your network SSID (name)
-	char *_pass;   // your network password
+	static bool _init_done;
+	static char *_ssid;   // your network SSID (name)
+	static char *_pass;   // your network password
 	uint32_t _start;
-	uint8_t _state;
+	uint8_t _init;
+	uint8_t _retry;
+
 };
 
 firmataApp	firmApp(ssid, pass);

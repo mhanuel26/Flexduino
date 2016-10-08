@@ -176,9 +176,10 @@ class FirmataClass
 
     // added
     void sendSetDigitalPinValue(byte pin, int value);
-    void sendSetPinMode(byte pin, int mode);
+    bool sendSetPinMode(byte pin, int mode);
     void recvFwNameVer(void);
     void sendQueryFirmware(void);
+    void reportDigitalPin(byte pin, int value);
 
   private:
     Stream *FirmataStream;
@@ -216,7 +217,7 @@ class FirmataClass
     void strobeBlinkPin(byte pin, int count, int onInterval, int offInterval);
 };
 
-//extern FirmataClass Firmata;
+extern FirmataClass Firmata;
 
 /*==============================================================================
  * MACROS

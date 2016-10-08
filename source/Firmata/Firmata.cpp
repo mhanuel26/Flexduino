@@ -280,8 +280,11 @@ void FirmataClass::processSysexMessage(void)
 void FirmataClass::processInput(void)
 {
   int inputData = FirmataStream->read(); // this is 'int' to handle -1 when no data
+
   if (inputData != -1) {
-    parse(inputData);
+	  Serial.print(inputData);
+	  Serial.print(" ");
+	  parse(inputData);
   }
 }
 
@@ -372,8 +375,7 @@ void FirmataClass::parse(byte inputData)
     	  systemReset();
     	  break;
       case REPORT_VERSION:
-		  printVersion();
-//        Firmata.printVersion();
+        Firmata.printVersion();
         break;
     }
   }
@@ -463,10 +465,14 @@ void FirmataClass::sendSetDigitalPinValue(byte pin, int value){
 }
 
 
-void FirmataClass::sendSetPinMode(byte pin, int mode){
-	FirmataStream->write(SET_PIN_MODE);
-	FirmataStream->write(pin);
-	FirmataStream->write(mode);
+bool FirmataClass::sendSetPinMode(byte pin, int mode){
+	size_t size;
+	size = FirmataStream->write(SET_PIN_MODE);
+	size += FirmataStream->write(pin);
+	size += FirmataStream->write(mode);
+	if(size != 3)
+		return false;
+	return true;
 }
 
 
@@ -476,6 +482,12 @@ void FirmataClass::sendQueryFirmware(void){
 	endSysex();
 }
 
+
+void FirmataClass::reportDigitalPin(byte pin, int value){
+	byte port = pin >> 3;		// ports has 0 thru 7 i/o
+	FirmataStream->write(REPORT_DIGITAL | (port & 0xF));
+	FirmataStream->write(1);
+}
 
 void FirmataClass::recvFwNameVer(void){
 	unsigned char recv = FirmataStream->read();
@@ -703,4 +715,4 @@ void FirmataClass::strobeBlinkPin(byte pin, int count, int onInterval, int offIn
 }
 
 //// make one instance for the user to use
-//FirmataClass Firmata;
+FirmataClass Firmata;

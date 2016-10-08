@@ -83,6 +83,7 @@
 //Field Defines
 #define SMART_LIGHT			"SmartLight"
 #define STATE 				"state"
+#define IO_NUM				"ioNum"
 // Actions Defines
 #define SET_ON				"setOn"
 #define SET_OFF				"setOff"
@@ -128,9 +129,10 @@ private:
 	WiFiNode	*_nodePtr;
 	void send_request(void);
 	void send_request(int len);
-	void handleSmartLightAction(bool state);
+	void handleSmartLightAction(int ioNum, bool state);
 	void process_incoming_msg(uint8_t *msg);
 	int build_group_msg(String group, String param, void* value, dtype type = Boolean);
+	int build_group_params_msg(String groupName, String param[], void* value[], dtype type[], int numParams);
 
 };
 
