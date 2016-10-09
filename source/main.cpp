@@ -176,6 +176,10 @@ extern artikLand Flexartik;
 WebSocketsClient webSockClient;
 #endif
 
+void init_firmata_nodes(void){
+	Flexartik.initCallbacks();
+}
+
 void init_bsp(void){
 	/* Init board hardware. */
 	BOARD_InitPins();
@@ -261,6 +265,7 @@ void setup(void){
 
 
 #if USE_FIRMATA
+//	firmApp.attachInitCb(init_firmata_nodes);
 	firmApp.setup();
 #endif
 

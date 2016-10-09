@@ -486,7 +486,7 @@ void FirmataClass::sendQueryFirmware(void){
 void FirmataClass::reportDigitalPin(byte pin, int value){
 	byte port = pin >> 3;		// ports has 0 thru 7 i/o
 	FirmataStream->write(REPORT_DIGITAL | (port & 0xF));
-	FirmataStream->write(1);
+	FirmataStream->write(value);
 }
 
 void FirmataClass::recvFwNameVer(void){

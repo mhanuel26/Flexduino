@@ -8,22 +8,21 @@
 #include "WiFiServerStream.h"
 #include "firmataDebug.h"
 
-
-#define D0		0b00000001
-#define D1		0b00000010
-#define D2		0b00000100
-#define D3		0b00001000
-#define D4		0b00010000
-#define	D5		0b00100000
-#define	D6		0b01000000
-
 #define PORT0	0
 
 extern SerialConsole Serial;
 
+
 bool firmataApp::_init_done = false;
 char * firmataApp::_ssid;   // your network SSID (name)
 char * firmataApp::_pass;   // your network password
+initCallbackFunction firmataApp::_initNodesCb = NULL;
+
+
+int espNode::_mask = 0;		// this will be a problem? when migaret to several clients?
+int espNode::_state = 0;
+int espNode::_old_inputs = 0;
+appCallbackFunction		espNode::_digitalPinCb[6] = { NULL, NULL, NULL, NULL, NULL, NULL};
 
 #define DEBUG_FIRMATA	1
 
@@ -42,17 +41,6 @@ WiFiClientStream stream(server_ip, SERVER_PORT);
 //FirmataClass Firmata2;
 
 
-void digitalWriteCallback(byte port, int value){
-#if DEBUG_FIRMATA
-	Serial.print("port = ");
-	Serial.println(port, BIN);
-	Serial.print("value = ");
-	Serial.println(value, BIN);
-#endif
-	// now the handler
-
-}
-
 static void hostConnectionCb(byte state){
 	firmApp.hostConnectionCallback(state);
 }
@@ -65,6 +53,8 @@ static void sysexCb(byte command, byte argc, byte *argv){
 firmataApp::firmataApp(char *ssid, char *pass){
 	_ssid = ssid;
 	_pass = pass;
+	_initNodesCb = NULL;
+	espNodeInit();
 }
 
 void firmataApp::stringCallback(char *myString)
@@ -167,7 +157,9 @@ void firmataApp::initTransport(void)
 	}
 }
 
-
+bool firmataApp::isReady(void){
+	return (bool)_init;
+}
 
 
 void firmataApp::setup(void){
@@ -179,7 +171,7 @@ void firmataApp::setup(void){
 
 	Firmata.setFirmwareVersion(FIRMATA_FIRMWARE_MAJOR_VERSION, FIRMATA_FIRMWARE_MINOR_VERSION);
 //	Firmata.attach(ANALOG_MESSAGE, analogWriteCallback);
-	Firmata.attach(DIGITAL_MESSAGE, digitalWriteCallback);
+	Firmata.attach(DIGITAL_MESSAGE, [](byte port, int value) { return firmApp.digitalWriteCallback(port, value); } );
 //	Firmata.attach(REPORT_ANALOG, reportAnalogCallback);
 //	Firmata.attach(REPORT_DIGITAL, reportDigitalCallback);
 //	Firmata.attach(SET_PIN_MODE, setPinModeCallback);
@@ -207,6 +199,10 @@ void firmataApp::setup(void){
 }
 
 
+void firmataApp::attachInitCb(initCallbackFunction initCb){
+	_initNodesCb = initCb;
+}
+
 void firmataApp::process(void){
 	while (Firmata.available()) {
 		Firmata.processInput();
@@ -214,15 +210,12 @@ void firmataApp::process(void){
 	stream.maintain();
 
 	if(!_init){
-		Serial.println("sent report digital command");
-		bool res = Firmata.sendSetPinMode(4, INPUT);
-		if(res){
+		if(initEspIO()){
+			if(_initNodesCb != NULL)
+				_initNodesCb();
 			_init = 1;
-			Firmata.sendSetPinMode(2, OUTPUT);
 			Serial.print("number of retries = ");
 			Serial.println(_retry);
-			Firmata.reportDigitalPin(4, 1);
-			setDigitalPin(D2, OFF);
 		}else{
 			_retry++;
 		}
@@ -239,8 +232,19 @@ void firmataApp::process(void){
 }
 
 
+// ********************************************
+// *********** 	espNode class   ***************
+// ********************************************
 
-// espNode class
+void espNode::espNodeInit(void){
+	//testing with static methods
+//	for(uint8_t j=0; j < sizeof(_digitalPinCb); j++){
+//		_digitalPinCb[j] = NULL;
+//	}
+//	_state = 0;
+//	_mask = 0;
+//	_old_inputs = 0;
+}
 
 bool espNode::isPinOutputInv(int pin){
 	byte lport = (byte)(pin & 0x7f);
@@ -260,5 +264,71 @@ void espNode::setDigitalPin(int pin, bool value){
 }
 
 
+void espNode::attachDigPinCb(byte pin, appCallbackFunction pinCb){
+	setEspPinMode(pin, INPUT);		// I only consider a callback on an INPUT pin...
+	Firmata.reportDigitalPin(pin, 1);
+	_digitalPinCb[pin] = pinCb;
+}
 
 
+void espNode::detachDigPinCb(byte pin){
+	Firmata.reportDigitalPin(pin, 0);
+	_digitalPinCb[pin] = NULL;
+}
+
+
+bool espNode::setEspPinMode(byte pin, int mode){
+	bool res = Firmata.sendSetPinMode(pin, mode);
+	if(res && (mode == INPUT)){
+		_mask |= (0x01 << pin);
+	}
+	return res;
+}
+
+int espNode::initEspIO(void){
+	bool res = setEspPinMode(nD2, OUTPUT);
+	if(res){
+		// set the blue led to OFF state
+		setDigitalPin(D2, OFF);
+		// this should be application dependent...
+//		setEspPinMode(nD4, INPUT);
+//		Firmata.reportDigitalPin(nD4, 1);
+		return 1;
+	}
+	return 0;
+}
+
+bool espNode::getIoLastReportedValue(byte pin){
+	byte mask = 0x1;
+	byte value;
+
+	mask = mask << pin;
+	value = mask & _old_inputs;
+	if(value)
+		return true;
+	return false;
+}
+
+void espNode::digitalWriteCallback(byte port, int value){
+#if DEBUG_FIRMATA
+	Serial.print("port = ");
+	Serial.println(port, BIN);
+	Serial.print("value = ");
+	Serial.println(value, BIN);
+#endif
+	// now the handler using callbacks
+	int newValue = value & _mask;
+	int mask = _old_inputs^newValue;
+	if(mask){
+		_old_inputs = newValue;
+		for(byte j=0; j<6; j++){
+			if(mask & 0x1){
+				if(_digitalPinCb[j] == NULL)
+					break;				// do not call NULL please
+				(newValue&0x1) ? _digitalPinCb[j](j, true) : _digitalPinCb[j](j, false);
+			}
+			mask = mask >> 1;
+			newValue = newValue >> 1;
+		}
+	}
+}

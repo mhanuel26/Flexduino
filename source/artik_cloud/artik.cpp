@@ -7,6 +7,7 @@
  **/
 
 #include "artik.h"
+#include "firmata_app.h"
 #include "WString.h"
 #include "Serial.h"
 #include <ArduinoJson.h>
@@ -35,6 +36,13 @@ void webSocketArtikEvent(WStype_t type, uint8_t * payload, size_t length){
 }
 #endif
 
+void artikLand::espDigIOPinSensor(byte pin, bool value){
+	Serial.print("Artik Digital IO pin ");
+	Serial.print(pin);
+	Serial.print(" sensor value = ");
+	Serial.println(value);
+	sendDigSensorState(pin, value);
+}
 
 artikLand::artikLand(void){
 #if (FIRMATA_MODE == FIRMATA_CLIENT)
@@ -45,6 +53,12 @@ artikLand::artikLand(void){
 	strcpy(_nodePtr->name, "SmartLight");
 #endif
 }
+
+void artikLand::initCallbacks(void){
+	// now set the callback
+//	attachDigPinCb(nD4, [](byte pin, bool value){ return Flexartik.espDigIOPinSensor(pin, value); });	// using lambda style
+}
+
 
 // build a more complex nested one level json group response with parameter list
 
@@ -190,6 +204,39 @@ void artikLand::toggleLED(uint8_t state){
 	send_request(len);
 }
 
+void artikLand::sendDigSensorState(int ioNum, bool value){
+	int len;
+	String params[2];
+	params[0] = String(STATE);
+	params[1] = String(IO_NUM);
+	void *values[2];
+	values[0] = &value;
+	values[1] = &ioNum;
+	dtype type[2];
+	type[0] = Boolean;
+	type[1] = Integer;
+
+	// push notification
+	len = build_group_params_msg(SMART_DIG_SENSOR, params, values, type, 2);
+	send_request(len);
+}
+
+void artikLand::handleSmartDigitalSensorCfg(int ioNum, bool active){
+	// if active, then enable push notifications
+	if(active && (ioNum < 6)){
+		// it call the callback where value will be sent
+		Serial.println("attaching Digital Sensor callback");
+		attachDigPinCb(ioNum, [](byte pin, bool value){ return Flexartik.espDigIOPinSensor(pin, value); });	// using lambda style
+	}else{
+		Serial.println("Detaching Digital Sensor callback");
+		bool state;
+		state = getIoLastReportedValue(ioNum);
+		detachDigPinCb(ioNum);
+		sendDigSensorState(ioNum, state);
+	}
+}
+
+
 void artikLand::handleSmartLightAction(int ioNum, bool state){
 	int len;
 	int pin = 1 << ioNum;
@@ -203,13 +250,16 @@ void artikLand::handleSmartLightAction(int ioNum, bool state){
 	type[0] = Boolean;
 	type[1] = Integer;
 
+	// some debug here
 	Serial.print("set SmartLight ");
 	Serial.print("pin ");
 	Serial.print(pin, BIN);
 	Serial.print(" state to ");
 	state ? Serial.println("ON") : Serial.println("OFF");
+	// the real action taken by Flexduino Gateway
+	//send data to firmata node
 	setDigitalPin(pin, state);
-
+	// response to artik
 	// now I should build a more complex response for the SmartLight state back to artik
 	len = build_group_params_msg(SMART_LIGHT, params, values, type, 2);
 	send_request(len);
@@ -247,9 +297,15 @@ void  artikLand::process_incoming_msg(uint8_t *msg){
 			}else if(!strncmp(action_name, SET_SMART_LIGHT, strlen(SET_SMART_LIGHT))){
 				Serial.println("set parameter on a Smart Light appliance");
 				JsonObject& param = actions[0]["parameters"];
-				bool OnState = param["OnState"].as<bool>();
-				int ioNum = param["ioNum"].as<int>();
+				bool OnState = param[LIGHT_STATE].as<bool>();
+				int ioNum = param[IO_NUM].as<int>();
 				handleSmartLightAction(ioNum, OnState);
+			}else if(!strncmp(action_name, CFG_SMART_DIG_SENSOR, strlen(CFG_SMART_DIG_SENSOR))){
+				Serial.println("set Configuration of Smart Digital Sensor");
+				JsonObject& param = actions[0]["parameters"];
+				bool active = param[ACTIVE].as<bool>();
+				int ioNum = param[IO_NUM].as<int>();
+				handleSmartDigitalSensorCfg(ioNum, active);
 			}else{
 				return;
 			}
@@ -258,7 +314,6 @@ void  artikLand::process_incoming_msg(uint8_t *msg){
 		Serial.print("received unknown message ");
 		Serial.println(type);
 	}
-
 }
 
 #if (ARTIK_CONN_PROTOCOL == ARTIK_USE_WEBSOCK_CLIENT)
