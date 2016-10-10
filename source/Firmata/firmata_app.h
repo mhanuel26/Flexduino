@@ -39,9 +39,15 @@ extern "C" {
 typedef void (*appCallbackFunction)(byte, bool);
 
 typedef void (*initCallbackFunction)(void);
+typedef void (*camTriggerCbFnct)(void);
 
 }
 
+typedef enum {
+	trigger_disable = 0,
+	trigger_rising,
+	trigger_falling
+}trg_type;
 
 class espNode {
 public:
@@ -52,6 +58,8 @@ public:
 	bool isPinOutputInv(int pin);
 	void attachDigPinCb(byte pin, appCallbackFunction pinCb);
 	void detachDigPinCb(byte pin);
+	void attachDigPinCamTriggerCb(byte pin, camTriggerCbFnct camCb, trg_type type);
+	void dettachDigPinCamTriggerCb(byte pin);
 	int  initEspIO(void);
 	bool setEspPinMode(byte pin, int mode);
 	void digitalWriteCallback(byte port, int value);
@@ -61,6 +69,8 @@ protected:
 	static int _state;
 	static int _old_inputs;
 	static appCallbackFunction		_digitalPinCb[6];
+	static camTriggerCbFnct			_pinCamPosTriggerCb[6];
+	static camTriggerCbFnct			_pinCamNegTriggerCb[6];
 };
 
 

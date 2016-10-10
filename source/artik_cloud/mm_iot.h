@@ -1,9 +1,11 @@
 #ifndef MM_IOT_H
 #define MM_IOT_H
 
+#include "artik.h"
+
 void sendImageCb(void);
 
-class mm_iot{
+class mm_iot : public artikLand {
 public:
 	void uploadImageUrlDoneCb(void);
 	int loadImageInJson(void);

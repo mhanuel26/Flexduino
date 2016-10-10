@@ -40,7 +40,7 @@ void mm_iot::uploadImageUrlDoneCb(void){
 	strcat(url, _id);
 	strcat(url, ".jpg");
 
-#if ARTIK_REST_CLIENT
+#if (ARTIK_CONN_PROTOCOL == ARTIK_USE_REST_CLIENT)
 	client.connect(ARTIK_URL, 443);
 	delay(1000);
     if (!client.connected()) {
@@ -69,6 +69,8 @@ void mm_iot::uploadImageUrlDoneCb(void){
 			}
 		}
     }
+#elif (ARTIK_CONN_PROTOCOL == ARTIK_USE_WEBSOCK_CLIENT)
+    sendImgUrl(url);
 #endif
 
 }

@@ -112,7 +112,7 @@ int status = WL_IDLE_STATUS;
 #define USE_WEBSOCK_SERVER	0			// Enable to use WebSocket server to stream pictures using javascript worker
 
 
-#define IMGUR_CLIENT 	0
+#define IMGUR_CLIENT 	1
 #define SERVER_ENABLE	0
 #if defined(OV7670)
 #define fps_avg			0			// change this one.
@@ -131,7 +131,7 @@ BYTE Buff[SD_FILE_SIZE]; /* File read buffer (80 SD card blocks to let multibloc
 #if (SSL_CLIENT_TEST | ARTIK_REST_CLIENT | IMGUR_CLIENT)
 //WiFiClient client;
 WiFiSSLClient client;
-extern String AuthorizationData;
+//extern String AuthorizationData;
 #endif
 
 #if SSL_CLIENT_TEST
@@ -176,8 +176,14 @@ extern artikLand Flexartik;
 WebSocketsClient webSockClient;
 #endif
 
+void take_picture_cb(void){
+	Serial.println("callback start an image capture");
+	camera.snapshot();
+}
+
 void init_firmata_nodes(void){
-	Flexartik.initCallbacks();
+	Flexartik.initCallbacks();			// this do not do anything  - mostly for tests since we can attach callbacks from Artik cloud actions
+	Flexartik.attachCameraSnap(take_picture_cb);		// we attach the camera callback but it also need the trigger action to setup from Artik Cloud
 }
 
 void init_bsp(void){
@@ -265,7 +271,7 @@ void setup(void){
 
 
 #if USE_FIRMATA
-//	firmApp.attachInitCb(init_firmata_nodes);
+	firmApp.attachInitCb(init_firmata_nodes);
 	firmApp.setup();
 #endif
 
@@ -362,7 +368,6 @@ int main(void) {
 #if defined(OV7670)
 	// just to test Imgur
 	camera.picturemode();
-	camera.snapshot();
 #endif
 #endif
 

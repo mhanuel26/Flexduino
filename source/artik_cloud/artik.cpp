@@ -36,6 +36,10 @@ void webSocketArtikEvent(WStype_t type, uint8_t * payload, size_t length){
 }
 #endif
 
+void artikLand::attachCameraSnap(artikCameraSnapCb camCb){
+	artikCamCb = camCb;
+}
+
 void artikLand::espDigIOPinSensor(byte pin, bool value){
 	Serial.print("Artik Digital IO pin ");
 	Serial.print(pin);
@@ -204,6 +208,13 @@ void artikLand::toggleLED(uint8_t state){
 	send_request(len);
 }
 
+void artikLand::sendImgUrl(char url[]){
+	// push notification of Image Url
+	int len;
+	len = build_simple_msg(IMAGE_URL, url, Strng);
+	send_request(len);
+}
+
 void artikLand::sendDigSensorState(int ioNum, bool value){
 	int len;
 	String params[2];
@@ -216,23 +227,26 @@ void artikLand::sendDigSensorState(int ioNum, bool value){
 	type[0] = Boolean;
 	type[1] = Integer;
 
+
 	// push notification
 	len = build_group_params_msg(SMART_DIG_SENSOR, params, values, type, 2);
 	send_request(len);
 }
 
-void artikLand::handleSmartDigitalSensorCfg(int ioNum, bool active){
+void artikLand::handleSmartDigitalSensorCfg(int ioNum, bool active, int trigger){
 	// if active, then enable push notifications
 	if(active && (ioNum < 6)){
 		// it call the callback where value will be sent
 		Serial.println("attaching Digital Sensor callback");
 		attachDigPinCb(ioNum, [](byte pin, bool value){ return Flexartik.espDigIOPinSensor(pin, value); });	// using lambda style
+		attachDigPinCamTriggerCb(ioNum, artikCamCb, (trg_type)trigger);
 	}else{
 		Serial.println("Detaching Digital Sensor callback");
 		bool state;
 		state = getIoLastReportedValue(ioNum);
 		detachDigPinCb(ioNum);
 		sendDigSensorState(ioNum, state);
+		dettachDigPinCamTriggerCb(ioNum);
 	}
 }
 
@@ -305,7 +319,8 @@ void  artikLand::process_incoming_msg(uint8_t *msg){
 				JsonObject& param = actions[0]["parameters"];
 				bool active = param[ACTIVE].as<bool>();
 				int ioNum = param[IO_NUM].as<int>();
-				handleSmartDigitalSensorCfg(ioNum, active);
+				int camTrigger = param[CAM_TRIGGER].as<int>();
+				handleSmartDigitalSensorCfg(ioNum, active, camTrigger);
 			}else{
 				return;
 			}

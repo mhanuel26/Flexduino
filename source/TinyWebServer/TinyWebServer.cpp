@@ -367,7 +367,7 @@ bool TinyWebServer::clientDisconnect(){
 
 bool TinyWebServer::handleNewClient(){
 	WiFiClient *tmp;
-	tmp = server_.mavailable();
+	tmp = server_.mavailable();		// I was using a modified version of available but after updating win1500 arduino library seems I lost it....server_.mavailable();
 	if(tmp != (WiFiClient*)NULL){	// we have a new client
 		PRINTF("*** new client with socket# %d wants to connect\r\n", tmp->getSockNum());
 		return newClient(tmp);

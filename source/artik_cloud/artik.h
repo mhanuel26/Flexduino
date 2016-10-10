@@ -137,9 +137,12 @@
 #define SMART_LIGHT			"SmartLight"
 // Smart Digital sensor
 #define SMART_DIG_SENSOR	"SmartDigitalSensor"
+// The image Url
+#define IMAGE_URL			"picUrl"
 // some commons
 #define STATE 				"state"
 #define IO_NUM				"ioNum"
+#define CAM_TRIGGER			"camTrigger"
 // ACTIONS Defines
 // Smart Light
 #define SET_SMART_LIGHT			"setSmartLight"
@@ -170,7 +173,10 @@ typedef enum {
 	Strng
 }dtype;
 
+
 #if (ARTIK_CONN_PROTOCOL != ARTIK_DISABLE)
+
+typedef void (*artikCameraSnapCb)(void);
 
 void webSocketArtikEvent(WStype_t type, uint8_t * payload, size_t length);
 
@@ -178,23 +184,27 @@ class artikLand : public firmataApp {
 public:
 	artikLand(void);
 	void initCallbacks(void);
+	void attachCameraSnap(artikCameraSnapCb camCb);
 	void send_status(bool stat);		// just to test
 	void webSocketArtikEvent(WStype_t type, uint8_t * payload, size_t length);
 	void toggleLED(uint8_t state);
 	int  build_simple_msg(String param, void* value, dtype type = Boolean);
 	void espDigIOPinSensor(byte pin, bool value);
 	char _buf[500];			// The JSON data
+protected:
+	void sendImgUrl(char url[]);
 private:
 #if (FIRMATA_MODE == FIRMATA_CLIENT)
-	WiFiNode	_node;								// let's do a demo that connects to only one firmata server
+	WiFiNode	_node;								// let's do a demo that connects to only one firmata server - not used at this time
 #elif (FIRMATA_MODE == FIRMATA_SERVER)
 	WiFiNode	_node[MAX_NODES];					// we need to adjust for server mode
 #endif
 	WiFiNode	*_nodePtr;
+	artikCameraSnapCb artikCamCb;
 	void send_request(void);
 	void send_request(int len);
 	void handleSmartLightAction(int ioNum, bool state);
-	void handleSmartDigitalSensorCfg(int ioNum, bool active);
+	void handleSmartDigitalSensorCfg(int ioNum, bool active, int trigger);
 	void sendDigSensorState(int pin, bool value);
 	void process_incoming_msg(uint8_t *msg);
 	int build_group_msg(String group, String param, void* value, dtype type = Boolean);

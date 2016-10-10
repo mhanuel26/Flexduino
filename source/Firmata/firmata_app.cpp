@@ -23,6 +23,8 @@ int espNode::_mask = 0;		// this will be a problem? when migaret to several clie
 int espNode::_state = 0;
 int espNode::_old_inputs = 0;
 appCallbackFunction		espNode::_digitalPinCb[6] = { NULL, NULL, NULL, NULL, NULL, NULL};
+camTriggerCbFnct		espNode::_pinCamPosTriggerCb[6] = { NULL, NULL, NULL, NULL, NULL, NULL};
+camTriggerCbFnct		espNode::_pinCamNegTriggerCb[6] = { NULL, NULL, NULL, NULL, NULL, NULL};
 
 #define DEBUG_FIRMATA	1
 
@@ -271,11 +273,34 @@ void espNode::attachDigPinCb(byte pin, appCallbackFunction pinCb){
 }
 
 
+
 void espNode::detachDigPinCb(byte pin){
 	Firmata.reportDigitalPin(pin, 0);
 	_digitalPinCb[pin] = NULL;
 }
 
+void espNode::attachDigPinCamTriggerCb(byte pin, camTriggerCbFnct camCb, trg_type type){
+	switch(type){
+		case trigger_disable:
+		default:
+			_pinCamPosTriggerCb[pin] = NULL;
+			_pinCamNegTriggerCb[pin] = NULL;
+		break;
+		case trigger_rising:
+			_pinCamPosTriggerCb[pin] = camCb;
+			_pinCamNegTriggerCb[pin] = NULL;
+		break;
+		case trigger_falling:
+			_pinCamPosTriggerCb[pin] = NULL;
+			_pinCamNegTriggerCb[pin] = camCb;
+		break;
+	}
+}
+
+void espNode::dettachDigPinCamTriggerCb(byte pin){
+	_pinCamPosTriggerCb[pin] = NULL;
+	_pinCamNegTriggerCb[pin] = NULL;
+}
 
 bool espNode::setEspPinMode(byte pin, int mode){
 	bool res = Firmata.sendSetPinMode(pin, mode);
@@ -325,7 +350,15 @@ void espNode::digitalWriteCallback(byte port, int value){
 			if(mask & 0x1){
 				if(_digitalPinCb[j] == NULL)
 					break;				// do not call NULL please
-				(newValue&0x1) ? _digitalPinCb[j](j, true) : _digitalPinCb[j](j, false);
+				if(newValue&0x1){
+					_digitalPinCb[j](j, true);
+					if(_pinCamPosTriggerCb[j] != NULL)
+						_pinCamPosTriggerCb[j]();
+				}else{
+					_digitalPinCb[j](j, false);
+					if(_pinCamNegTriggerCb[j] != NULL)
+						_pinCamNegTriggerCb[j]();
+				}
 			}
 			mask = mask >> 1;
 			newValue = newValue >> 1;
