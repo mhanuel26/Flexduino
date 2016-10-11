@@ -100,10 +100,9 @@ bool ws_send_file(uint8_t num, const char* filename);
 static void put_rc (FRESULT rc);
 void printWifiStatus();
 
-char ssid[] = "MOOI";      // your network SSID (name)
-char pass[] = "mooi2409*";   // your network password
-//char ssid[] = "PLCAP";      // your network SSID (name)
-//char pass[] = "plcbanecu26*";   // your network password
+char ssid[] = "YOUR_SSID_HERE";      // your network SSID (name)
+char pass[] = "YOUR_AP_PASS";   // your network password
+
 int keyIndex = 0;                 // your network key Index number (needed only for WEP)
 int status = WL_IDLE_STATUS;
 

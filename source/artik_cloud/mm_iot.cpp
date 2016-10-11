@@ -17,8 +17,8 @@
 #define ARTIK_URL		"api.artik.cloud"
 
 extern uint8_t imgBuffer[10000];
-String imgur_token = String("2b57b2174304140900b03fd5dfe93b5ebe4a4d80");
-String client_ID = String("acbd3bf5d24ffdd");
+String imgur_token = String("YOUR_IMGUR_TOKEN");
+String client_ID = String("YOUR_CLIENT_ID");
 String AuthorizationDataImgur =  "Authorization: Bearer " + imgur_token;
 //String AuthorizationDataImgur =  "Authorization: Client-ID " + client_ID;
 uint8_t __attribute__((aligned(32), section(".myRAM"))) tmpBuf[10500];

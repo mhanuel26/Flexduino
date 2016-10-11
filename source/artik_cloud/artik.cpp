@@ -20,8 +20,8 @@ extern IPAddress server_ip;
 #endif
 
 // Artik Cloud
-String device_id = String("0cfb45de3d264b78ba3945a38f4ffd8b");
-String device_token = String("d216241fe8414430a418898ec23699e1");
+String device_id = String("YOUR_DEVICE_ID");
+String device_token = String("YOUR_DEVICE_TOKEN");
 //String AuthorizationData = "Authorization: Bearer <YOUR DEVICE TOKEN>";
 String AuthorizationData = "Authorization: Bearer " + device_token;
 
